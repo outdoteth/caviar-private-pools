@@ -1,0 +1,1 @@
+export { StandardMerkleTree } from './standard';

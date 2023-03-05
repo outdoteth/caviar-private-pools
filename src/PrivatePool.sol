@@ -4,14 +4,11 @@ pragma solidity ^0.8.19;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
+
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 
 contract PrivatePool {
-    struct MerkleMultiProof {
-        bytes32[] proof;
-        bool[] flags;
-    }
-
     event OwnershipTransferred(address indexed user, address indexed newOwner);
     event Initialize(
         address indexed baseToken,
@@ -22,10 +19,14 @@ contract PrivatePool {
         bytes32 merkleRoot,
         address stolenNftOracle
     );
+    event Buy(
+        uint256[] indexed tokenIds, uint256[] indexed tokenWeights, uint256 indexed inputAmount, uint256 feeAmount
+    );
 
     error AlreadyInitialized();
     error Unauthorized();
     error InvalidEthAmount();
+    error InvalidMerkleProof();
 
     address public baseToken;
     address public nft;
@@ -93,10 +94,10 @@ contract PrivatePool {
     ///         on the current price, fee rate and assigned NFT weights.
     /// @param tokenIds The token IDs of the NFTs to buy.
     /// @param tokenWeights The weights of the NFTs to buy.
-    /// @param proof The merkle proof for the weights of each NFT to buy.
+    /// @param proofs The merkle proof for the weights of each NFT to buy.
     /// @return netInputAmount The amount of base tokens spent inclusive of fees.
     /// @return feeAmount The amount of base tokens spent on fees.
-    function buy(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, MerkleMultiProof calldata proof)
+    function buy(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, bytes32[][] calldata proofs)
         public
         payable
         returns (uint256 netInputAmount, uint256 feeAmount)
@@ -104,7 +105,7 @@ contract PrivatePool {
         // ~~~ Checks ~~~ //
 
         // calculate the sum of weights of the NFTs to buy
-        uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
+        uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proofs);
 
         // calculate the required net input amount and fee amount
         (netInputAmount, feeAmount) = buyQuote(weightSum);
@@ -137,6 +138,9 @@ contract PrivatePool {
         if (baseToken == address(0) && msg.value > netInputAmount) {
             payable(msg.sender).transfer(msg.value - netInputAmount);
         }
+
+        // emit the buy event
+        emit Buy(tokenIds, tokenWeights, netInputAmount, feeAmount);
     }
 
     /// @notice Sells NFTs into the pool and transfers base tokens to the caller. NFTs
@@ -145,9 +149,7 @@ contract PrivatePool {
     /// @param tokenIds The token IDs of the NFTs to sell.
     /// @param tokenWeights The weights of the NFTs to sell.
     /// @param proof The merkle proof for the weights of each NFT to sell.
-    function sell(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, MerkleMultiProof calldata proof)
-        public
-    {}
+    function sell(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, bytes32[][] calldata proof) public {}
 
     /// @notice Deposits base tokens and NFTs into the pool. The caller must approve
     ///         the pool to transfer the NFTs and base tokens.
@@ -177,10 +179,10 @@ contract PrivatePool {
     function change(
         uint256[] calldata inputTokenIds,
         uint256[] calldata inputTokenWeights,
-        MerkleMultiProof calldata inputProof,
+        bytes32[][] calldata inputProof,
         uint256[] memory outputTokenIds,
         uint256[] calldata outputTokenWeights,
-        MerkleMultiProof calldata outputProof
+        bytes32[][] calldata outputProof
     ) public {}
 
     /// @notice Executes a transaction from the pool account to a target contrat. The caller
@@ -229,13 +231,32 @@ contract PrivatePool {
         netInputAmount = inputAmount + feeAmount;
     }
 
+    /// @notice Sums the weights of each NFT and validates that the weights are correct
+    ///         by verifying the merkle proof.
+    /// @param tokenIds The token IDs of the NFTs to sum the weights for.
+    /// @param tokenWeights The weights of each NFT in the token IDs array.
+    /// @param proof The merkle proof for the weights of each NFT.
+    /// @return sum The sum of the weights of each NFT.
     function sumWeightsAndValidateProof(
         uint256[] calldata tokenIds,
         uint256[] calldata tokenWeights,
-        MerkleMultiProof calldata proof
+        bytes32[][] calldata proof
     ) public view returns (uint256) {
+        // if the merkle root is not set then set the weight of each nft to be 1e18
         if (merkleRoot == bytes32(0)) {
             return tokenIds.length * 1e18;
         }
+
+        uint256 sum;
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            // sum each token weight
+            sum += tokenWeights[i];
+
+            // validate that the weight is valid against the merkle proof
+            bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(tokenIds[i], tokenWeights[i]))));
+            if (!MerkleProofLib.verify(proof[i], merkleRoot, leaf)) revert InvalidMerkleProof();
+        }
+
+        return sum;
     }
 }
