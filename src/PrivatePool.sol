@@ -20,12 +20,16 @@ contract PrivatePool {
 
     error AlreadyInitialized();
     error Unauthorized();
+    error InvalidEthAmount();
 
     address public baseToken;
     address public nft;
     uint16 public feeRate;
     bool public initialized;
     uint128 public virtualBaseTokenReserves;
+
+    /// @dev The virtual NFT reserves that a user sets. If it's desired to set the
+    ///      reserves to match 16 NFTs then the virtual reserves should be set to 16e18.
     uint128 public virtualNftReserves;
     bytes32 public merkleRoot;
     address public stolenNftOracle;
@@ -59,6 +63,7 @@ contract PrivatePool {
         // prevent duplicate initialization
         if (initialized) revert AlreadyInitialized();
 
+        // set the state variables
         baseToken = _baseToken;
         nft = _nft;
         virtualBaseTokenReserves = _virtualBaseTokenReserves;
@@ -71,8 +76,8 @@ contract PrivatePool {
         // mark the pool as initialized
         initialized = true;
 
+        // emit the events
         emit OwnershipTransferred(address(0), _owner);
-
         emit Initialize(
             _baseToken, _nft, _virtualBaseTokenReserves, _virtualNftReserves, _feeRate, _merkleRoot, _stolenNftOracle
         );
@@ -87,7 +92,39 @@ contract PrivatePool {
     function buy(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, MerkleMultiProof calldata proof)
         public
         payable
-    {}
+    {
+        // === Checks === //
+
+        // calculate the sum of weights of the NFTs to buy
+        uint256 weightSum = merkleRoot == 0 ? tokenIds.length * 1e18 : 0;
+
+        // calculate the required input amount
+        uint256 inputAmount = buyQuote(weightSum);
+
+        // ensure the caller sent enough ETH if the base token is ETH
+        // or that the caller sent 0 ETH if the base token is not ETH
+        if ((msg.value < inputAmount && baseToken == address(0)) || (baseToken != address(0) && msg.value > 0)) {
+            revert InvalidEthAmount();
+        }
+
+        // TODO: Check that the NFTs are not stolen
+        if (stolenNftOracle != address(0)) {}
+
+        // === Effects === //
+
+        // update the virtual reserves
+        virtualBaseTokenReserves += uint128(inputAmount);
+        virtualNftReserves -= uint128(weightSum);
+
+        // === Interactions === //
+
+        // transfer the base token from the caller if base token is not ETH
+        if (baseToken != address(0)) {
+            IERC20(baseToken).transferFrom(msg.sender, address(this), inputAmount);
+        }
+
+        // transfer the NFTs to the caller
+    }
 
     /// @notice Sells NFTs into the pool and transfers base tokens to the caller. NFTs
     ///         are transferred from the caller to the pool. The net proceeds depend on
@@ -163,5 +200,16 @@ contract PrivatePool {
     function transferOwnership(address newOwner) public virtual onlyOwner {
         owner = newOwner;
         emit OwnershipTransferred(msg.sender, newOwner);
+    }
+
+    /// @notice Returns the required input of buying a given amount of NFTs (in 1e18) inclusive of
+    ///         the fee which is dependent on the currently set fee rate.
+    /// @param outputAmount The amount of NFTs to buy multiplied by 1e18.
+    function buyQuote(uint256 outputAmount) public view returns (uint256) {
+        // calculate the input amount based on xy=k invariant
+        uint256 inputAmount = outputAmount * virtualBaseTokenReserves / (virtualNftReserves - outputAmount);
+        uint256 feeAmount = inputAmount * feeRate / 10_000;
+
+        return inputAmount + feeAmount;
     }
 }
