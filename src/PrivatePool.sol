@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 
 contract PrivatePool {
     struct MerkleMultiProof {
@@ -93,27 +94,26 @@ contract PrivatePool {
     /// @param tokenIds The token IDs of the NFTs to buy.
     /// @param tokenWeights The weights of the NFTs to buy.
     /// @param proof The merkle proof for the weights of each NFT to buy.
+    /// @return netInputAmount The amount of base tokens spent inclusive of fees.
+    /// @return feeAmount The amount of base tokens spent on fees.
     function buy(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, MerkleMultiProof calldata proof)
         public
         payable
+        returns (uint256 netInputAmount, uint256 feeAmount)
     {
         // ~~~ Checks ~~~ //
 
         // calculate the sum of weights of the NFTs to buy
-        // TODO: Add weight summing if merkle root is set
-        uint256 weightSum = merkleRoot == bytes32(0) ? tokenIds.length * 1e18 : 0;
+        uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
 
         // calculate the required net input amount and fee amount
-        (uint256 netInputAmount, uint256 feeAmount) = buyQuote(weightSum);
+        (netInputAmount, feeAmount) = buyQuote(weightSum);
 
         // ensure the caller sent enough ETH if the base token is ETH
         // or that the caller sent 0 ETH if the base token is not ETH
         if ((msg.value < netInputAmount && baseToken == address(0)) || (baseToken != address(0) && msg.value > 0)) {
             revert InvalidEthAmount();
         }
-
-        // TODO: Check that the NFTs are not stolen
-        if (stolenNftOracle != address(0)) {}
 
         // ~~~ Effects ~~~ //
 
@@ -227,5 +227,15 @@ contract PrivatePool {
 
         feeAmount = inputAmount * feeRate / 10_000;
         netInputAmount = inputAmount + feeAmount;
+    }
+
+    function sumWeightsAndValidateProof(
+        uint256[] calldata tokenIds,
+        uint256[] calldata tokenWeights,
+        MerkleMultiProof calldata proof
+    ) public view returns (uint256) {
+        if (merkleRoot == bytes32(0)) {
+            return tokenIds.length * 1e18;
+        }
     }
 }

@@ -13,7 +13,6 @@ contract BuyTest is Fixture {
     uint128 virtualNftReserves = 5e18;
     uint16 feeRate = 0;
     bytes32 merkleRoot = bytes32(abi.encode(0));
-    address stolenNftOracle = address(0);
     address owner = address(this);
 
     uint256[] tokenIds;
@@ -23,7 +22,14 @@ contract BuyTest is Fixture {
     function setUp() public {
         privatePool = new PrivatePool();
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, stolenNftOracle, owner
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            owner
         );
 
         for (uint256 i = 0; i < 5; i++) {
@@ -48,6 +54,20 @@ contract BuyTest is Fixture {
             netInputAmount,
             "Should have refunded anything surplus to netInputAmount"
         );
+    }
+
+    function test_ReturnsNetInputAmount() public {
+        // arrange
+        tokenIds.push(1);
+        tokenIds.push(2);
+        tokenIds.push(3);
+        (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+
+        // act
+        (uint256 returnedNetInputAmount,) = privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proof);
+
+        // assert
+        assertEq(returnedNetInputAmount, netInputAmount, "Should have returned netInputAmount");
     }
 
     function test_TransfersNftsToCaller() public {
@@ -78,7 +98,7 @@ contract BuyTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            stolenNftOracle,
+            address(stolenNftOracle),
             owner
         );
 
@@ -136,15 +156,32 @@ contract BuyTest is Fixture {
         );
     }
 
-    function test_PreventsStolenNfts() public {
+    function test_RevertIf_CallerSentLessEthThanNetInputAmount() public {
         // arrange
         tokenIds.push(1);
-        tokenIds.push(2);
-        tokenIds.push(3);
         (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
 
         // act
-        vm.expectRevert();
-        privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proof);
+        vm.expectRevert(PrivatePool.InvalidEthAmount.selector);
+        privatePool.buy{value: netInputAmount - 1}(tokenIds, tokenWeights, proof);
+    }
+
+    function test_RevertIf_CallerSentEthAndBaseTokenIsNotSetAsEth() public {
+        // arrange
+        privatePool = new PrivatePool();
+        privatePool.initialize(
+            address(shibaInu),
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            owner
+        );
+
+        // act
+        vm.expectRevert(PrivatePool.InvalidEthAmount.selector);
+        privatePool.buy{value: 100}(tokenIds, tokenWeights, proof);
     }
 }

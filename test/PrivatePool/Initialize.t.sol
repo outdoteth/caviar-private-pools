@@ -25,7 +25,6 @@ contract InitializeTest is Fixture {
     uint128 virtualNftReserves = 200;
     uint16 feeRate = 300;
     bytes32 merkleRoot = bytes32(abi.encode(0xaaa));
-    address stolenNftOracle = address(0xabc);
     address owner = address(0xdef);
 
     function setUp() public {
@@ -36,10 +35,17 @@ contract InitializeTest is Fixture {
         // act
         vm.expectEmit(true, true, true, true);
         emit Initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, stolenNftOracle
+            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, address(stolenNftOracle)
         );
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, stolenNftOracle, owner
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            owner
         );
     }
 
@@ -48,14 +54,28 @@ contract InitializeTest is Fixture {
         vm.expectEmit(true, true, true, true);
         emit OwnershipTransferred(address(0), owner);
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, stolenNftOracle, owner
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            owner
         );
     }
 
     function test_SetsInitializedToTrue() public {
         // act
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, stolenNftOracle, owner
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            owner
         );
 
         // assert
@@ -65,20 +85,41 @@ contract InitializeTest is Fixture {
     function test_InitializesStateVariables() public {
         // act
         testFuzz_InitializesStateVariables(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, stolenNftOracle, owner
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            owner
         );
     }
 
     function test_RevertIf_AlreadyInitialized() public {
         // arrange
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, stolenNftOracle, owner
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            owner
         );
 
         // act
         vm.expectRevert(PrivatePool.AlreadyInitialized.selector);
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, stolenNftOracle, owner
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            owner
         );
     }
 
