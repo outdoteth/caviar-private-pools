@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC721} from "solmate/tokens/ERC721.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+
 contract PrivatePool {
     struct MerkleMultiProof {
         bytes32[] proof;
@@ -93,37 +97,46 @@ contract PrivatePool {
         public
         payable
     {
-        // === Checks === //
+        // ~~~ Checks ~~~ //
 
         // calculate the sum of weights of the NFTs to buy
-        uint256 weightSum = merkleRoot == 0 ? tokenIds.length * 1e18 : 0;
+        // TODO: Add weight summing if merkle root is set
+        uint256 weightSum = merkleRoot == bytes32(0) ? tokenIds.length * 1e18 : 0;
 
-        // calculate the required input amount
-        uint256 inputAmount = buyQuote(weightSum);
+        // calculate the required net input amount and fee amount
+        (uint256 netInputAmount, uint256 feeAmount) = buyQuote(weightSum);
 
         // ensure the caller sent enough ETH if the base token is ETH
         // or that the caller sent 0 ETH if the base token is not ETH
-        if ((msg.value < inputAmount && baseToken == address(0)) || (baseToken != address(0) && msg.value > 0)) {
+        if ((msg.value < netInputAmount && baseToken == address(0)) || (baseToken != address(0) && msg.value > 0)) {
             revert InvalidEthAmount();
         }
 
         // TODO: Check that the NFTs are not stolen
         if (stolenNftOracle != address(0)) {}
 
-        // === Effects === //
+        // ~~~ Effects ~~~ //
 
         // update the virtual reserves
-        virtualBaseTokenReserves += uint128(inputAmount);
+        virtualBaseTokenReserves += uint128(netInputAmount - feeAmount);
         virtualNftReserves -= uint128(weightSum);
 
-        // === Interactions === //
+        // ~~~ Interactions ~~~ //
 
         // transfer the base token from the caller if base token is not ETH
         if (baseToken != address(0)) {
-            IERC20(baseToken).transferFrom(msg.sender, address(this), inputAmount);
+            ERC20(baseToken).transferFrom(msg.sender, address(this), netInputAmount);
         }
 
         // transfer the NFTs to the caller
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            ERC721(nft).safeTransferFrom(address(this), msg.sender, tokenIds[i]);
+        }
+
+        // if the base token is ETH then refund any excess ETH to the caller
+        if (baseToken == address(0) && msg.value > netInputAmount) {
+            payable(msg.sender).transfer(msg.value - netInputAmount);
+        }
     }
 
     /// @notice Sells NFTs into the pool and transfers base tokens to the caller. NFTs
@@ -205,11 +218,14 @@ contract PrivatePool {
     /// @notice Returns the required input of buying a given amount of NFTs (in 1e18) inclusive of
     ///         the fee which is dependent on the currently set fee rate.
     /// @param outputAmount The amount of NFTs to buy multiplied by 1e18.
-    function buyQuote(uint256 outputAmount) public view returns (uint256) {
-        // calculate the input amount based on xy=k invariant
-        uint256 inputAmount = outputAmount * virtualBaseTokenReserves / (virtualNftReserves - outputAmount);
-        uint256 feeAmount = inputAmount * feeRate / 10_000;
+    /// @return netInputAmount The required input amount of base tokens inclusive of the fee.
+    /// @return feeAmount The fee amount.
+    function buyQuote(uint256 outputAmount) public view returns (uint256 netInputAmount, uint256 feeAmount) {
+        // calculate the input amount based on xy=k invariant and round up by 1 wei
+        uint256 inputAmount =
+            FixedPointMathLib.mulDivUp(outputAmount, virtualBaseTokenReserves, (virtualNftReserves - outputAmount));
 
-        return inputAmount + feeAmount;
+        feeAmount = inputAmount * feeRate / 10_000;
+        netInputAmount = inputAmount + feeAmount;
     }
 }
