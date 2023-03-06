@@ -25,6 +25,7 @@ contract PrivatePool is ERC721TokenReceiver {
     event Sell(
         uint256[] indexed tokenIds, uint256[] indexed tokenWeights, uint256 indexed outputAmount, uint256 feeAmount
     );
+    event Deposit(uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
 
     error AlreadyInitialized();
     error Unauthorized();
@@ -165,20 +166,26 @@ contract PrivatePool is ERC721TokenReceiver {
         bytes32[][] calldata proofs,
         IStolenNftOracle.Message[] calldata stolenNftProofs
     ) public returns (uint256 netOutputAmount, uint256 feeAmount) {
+        // ~~~ Checks ~~~ //
+
         // calculate the sum of weights of the NFTs to sell
         uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proofs);
 
         // calculate the net output amount and fee amount
         (netOutputAmount, feeAmount) = sellQuote(weightSum);
 
-        // update the virtual reserves
-        virtualBaseTokenReserves -= uint128(netOutputAmount - feeAmount);
-        virtualNftReserves += uint128(weightSum);
-
         //  check the nfts are not stolen
         if (stolenNftOracle != address(0)) {
             IStolenNftOracle(stolenNftOracle).validateTokensAreNotStolen(nft, tokenIds, stolenNftProofs);
         }
+
+        // ~~~ Effects ~~~ //
+
+        // update the virtual reserves
+        virtualBaseTokenReserves -= uint128(netOutputAmount - feeAmount);
+        virtualNftReserves += uint128(weightSum);
+
+        // ~~~ Interactions ~~~ //
 
         // transfer the nfts from the caller
         for (uint256 i = 0; i < tokenIds.length; i++) {
@@ -201,7 +208,30 @@ contract PrivatePool is ERC721TokenReceiver {
     ///         the pool to transfer the NFTs and base tokens.
     /// @param tokenIds The token IDs of the NFTs to deposit.
     /// @param baseTokenAmount The amount of base tokens to deposit.
-    function deposit(uint256[] calldata tokenIds, uint256 baseTokenAmount) public payable {}
+    function deposit(uint256[] calldata tokenIds, uint256 baseTokenAmount) public payable {
+        // ~~~ Checks ~~~ //
+
+        // ensure the caller sent a valid amount of ETH if base token is ETH
+        // or that the caller sent 0 ETH if base token is not ETH
+        if ((baseToken == address(0) && msg.value != baseTokenAmount) || (msg.value > 0 && baseToken != address(0))) {
+            revert InvalidEthAmount();
+        }
+
+        // ~~~ Interactions ~~~ //
+
+        // transfer the nfts from the caller
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
+        }
+
+        if (baseToken != address(0)) {
+            // transfer the base tokens from the caller
+            ERC20(baseToken).transferFrom(msg.sender, address(this), baseTokenAmount);
+        }
+
+        // emit the deposit event
+        emit Deposit(tokenIds, baseTokenAmount);
+    }
 
     /// @notice Withdraws NFTs from the pool. Can only be called by the owner of the pool.
     /// @param token The address of the NFT.
