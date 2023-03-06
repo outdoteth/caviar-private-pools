@@ -9,3 +9,6 @@
 	path = lib/solady
 	url = https://github.com/Vectorized/solady
 	branch = v0.0.81
+[submodule "lib/murky"]
+	path = lib/murky
+	url = https://github.com/dmfxyz/murky
