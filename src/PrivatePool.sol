@@ -2,13 +2,13 @@
 pragma solidity ^0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC721} from "solmate/tokens/ERC721.sol";
+import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 
-contract PrivatePool {
+contract PrivatePool is ERC721TokenReceiver {
     event OwnershipTransferred(address indexed user, address indexed newOwner);
     event Initialize(
         address indexed baseToken,
@@ -21,6 +21,9 @@ contract PrivatePool {
     );
     event Buy(
         uint256[] indexed tokenIds, uint256[] indexed tokenWeights, uint256 indexed inputAmount, uint256 feeAmount
+    );
+    event Sell(
+        uint256[] indexed tokenIds, uint256[] indexed tokenWeights, uint256 indexed outputAmount, uint256 feeAmount
     );
 
     error AlreadyInitialized();
@@ -36,6 +39,10 @@ contract PrivatePool {
 
     /// @dev The virtual NFT reserves that a user sets. If it's desired to set the
     ///      reserves to match 16 NFTs then the virtual reserves should be set to 16e18.
+    ///      If weights are enabled by setting the merkle root to be non-zero then the
+    ///      virtual reserves should be set to the sum of the weights of the NFTs; where
+    ///      floor NFTs all have a weight of 1. A rarer NFT may have a weight of 2.3 if
+    ///      it's 2.3x more valuable than a floor.
     uint128 public virtualNftReserves;
     bytes32 public merkleRoot;
     address public stolenNftOracle;
@@ -148,8 +155,47 @@ contract PrivatePool {
     ///         the current price, fee rate and assigned NFT weights.
     /// @param tokenIds The token IDs of the NFTs to sell.
     /// @param tokenWeights The weights of the NFTs to sell.
-    /// @param proof The merkle proof for the weights of each NFT to sell.
-    function sell(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, bytes32[][] calldata proof) public {}
+    /// @param proofs The merkle proof for the weights of each NFT to sell.
+    /// @param stolenNftProofs The proofs that show each NFT is not stolen.
+    /// @return netOutputAmount The amount of base tokens received inclusive of fees.
+    /// @return feeAmount The amount of base tokens to pay in fees.
+    function sell(
+        uint256[] calldata tokenIds,
+        uint256[] calldata tokenWeights,
+        bytes32[][] calldata proofs,
+        IStolenNftOracle.Message[] calldata stolenNftProofs
+    ) public returns (uint256 netOutputAmount, uint256 feeAmount) {
+        // calculate the sum of weights of the NFTs to sell
+        uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proofs);
+
+        // calculate the net output amount and fee amount
+        (netOutputAmount, feeAmount) = sellQuote(weightSum);
+
+        // update the virtual reserves
+        virtualBaseTokenReserves -= uint128(netOutputAmount - feeAmount);
+        virtualNftReserves += uint128(weightSum);
+
+        //  check the nfts are not stolen
+        if (stolenNftOracle != address(0)) {
+            IStolenNftOracle(stolenNftOracle).validateTokensAreNotStolen(nft, tokenIds, stolenNftProofs);
+        }
+
+        // transfer the nfts from the caller
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
+        }
+
+        // transfer eth to the caller if the base token is ETH or transfer
+        // the base token to the caller if the base token is not ETH
+        if (baseToken == address(0)) {
+            payable(msg.sender).transfer(netOutputAmount);
+        } else {
+            ERC20(baseToken).transfer(msg.sender, netOutputAmount);
+        }
+
+        // emit the sell event
+        emit Sell(tokenIds, tokenWeights, netOutputAmount, feeAmount);
+    }
 
     /// @notice Deposits base tokens and NFTs into the pool. The caller must approve
     ///         the pool to transfer the NFTs and base tokens.
@@ -229,6 +275,14 @@ contract PrivatePool {
 
         feeAmount = inputAmount * feeRate / 10_000;
         netInputAmount = inputAmount + feeAmount;
+    }
+
+    function sellQuote(uint256 inputAmount) public view returns (uint256 netOutputAmount, uint256 feeAmount) {
+        // calculate the output amount based on xy=k invariant
+        uint256 outputAmount = inputAmount * (virtualNftReserves + inputAmount) / virtualBaseTokenReserves;
+
+        feeAmount = outputAmount * feeRate / 10_000;
+        netOutputAmount = inputAmount - feeAmount;
     }
 
     /// @notice Sums the weights of each NFT and validates that the weights are correct

@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import "../Fixture.sol";
 import "../../src/PrivatePool.sol";
-import "forge-std/console.sol";
 
 contract BuyTest is Fixture {
     event Buy(
@@ -17,7 +16,7 @@ contract BuyTest is Fixture {
     uint128 virtualBaseTokenReserves = 100e18;
     uint128 virtualNftReserves = 5e18;
     uint16 feeRate = 0;
-    bytes32 merkleRoot = bytes32(abi.encode(0));
+    bytes32 merkleRoot = bytes32(0);
     address owner = address(this);
 
     uint256[] tokenIds;

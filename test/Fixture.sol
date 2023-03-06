@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
 import "solmate/tokens/ERC721.sol";
 import "solmate/utils/LibString.sol";
 
