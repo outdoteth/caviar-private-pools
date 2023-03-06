@@ -35,12 +35,17 @@ contract PrivatePool is ERC721TokenReceiver {
         uint256[] outputTokenWeights,
         uint256 feeAmount
     );
+    event SetVirtualReserves(uint128 virtualBaseTokenReserves, uint128 virtualNftReserves);
+    event SetMerkleRoot(bytes32 merkleRoot);
+    event SetFeeRate(uint16 feeRate);
+    event SetStolenNftOracle(address stolenNftOracle);
 
     error AlreadyInitialized();
     error Unauthorized();
     error InvalidEthAmount();
     error InvalidMerkleProof();
     error InsufficientInputWeight();
+    error FeeRateTooHigh();
 
     address public baseToken;
     address public nft;
@@ -365,24 +370,59 @@ contract PrivatePool is ERC721TokenReceiver {
     }
 
     /// @notice Sets the virtual base token reserves and virtual NFT reserves. Can only be called
-    ///         by the owner of the pool.
+    ///         by the owner of the pool. These parameters affect the price and liquidity depth
+    ///         of the pool.
     /// @param newVirtualBaseTokenReserves The new virtual base token reserves.
     /// @param newVirtualNftReserves The new virtual NFT reserves.
-    function setVirtualReserves(uint256 newVirtualBaseTokenReserves, uint256 newVirtualNftReserves) public onlyOwner {}
+    function setVirtualReserves(uint128 newVirtualBaseTokenReserves, uint128 newVirtualNftReserves) public onlyOwner {
+        // set the virtual base token reserves and virtual nft reserves
+        virtualBaseTokenReserves = newVirtualBaseTokenReserves;
+        virtualNftReserves = newVirtualNftReserves;
+
+        // emit the virtual reserves event
+        emit SetVirtualReserves(newVirtualBaseTokenReserves, newVirtualNftReserves);
+    }
 
     /// @notice Sets the merkle root. Can only be called by the owner of the pool.
+    ///         The merkle root is used to validate the NFT weights.
     /// @param newMerkleRoot The new merkle root.
-    function setMerkleRoot(bytes32 newMerkleRoot) public onlyOwner {}
+    function setMerkleRoot(bytes32 newMerkleRoot) public onlyOwner {
+        // set the merkle root
+        merkleRoot = newMerkleRoot;
 
-    /// @notice Sets the fee rate. Can only be called by the owner of the pool.
+        // emit the merkle root event
+        emit SetMerkleRoot(newMerkleRoot);
+    }
+
+    /// @notice Sets the fee rate. Can only be called by the owner of the pool. The fee
+    ///         rate is used to calculate the fee amount when swapping or changing NFTs.
+    ///         The fee rate is in basis points (1/100th of a percent) - 10_000 == 100%;
     /// @param newFeeRate The new fee rate (in basis points) 2_000 = 2%
-    function setFeeRate(uint16 newFeeRate) public {}
+    function setFeeRate(uint16 newFeeRate) public onlyOwner {
+        // check that the fee rate is less than 50%
+        if (newFeeRate >= 5_000) revert FeeRateTooHigh();
+
+        // set the fee rate
+        feeRate = newFeeRate;
+
+        // emit the fee rate event
+        emit SetFeeRate(newFeeRate);
+    }
 
     /// @notice Sets the stolen NFT oracle. Can only be called by the owner of the pool.
+    ///         The stolen NFT oracle is used to check if an NFT is stolen. If it's set
+    ///         to the zero address then no stolen NFT checks are performed.
     /// @param newStolenNftOracle The new stolen NFT oracle.
-    function setStolenNftOracle(address newStolenNftOracle) public {}
+    function setStolenNftOracle(address newStolenNftOracle) public onlyOwner {
+        // set the stolen NFT oracle
+        stolenNftOracle = newStolenNftOracle;
 
-    /// @notice Transfers ownership of the pool to a new owner.
+        // emit the stolen NFT oracle event
+        emit SetStolenNftOracle(newStolenNftOracle);
+    }
+
+    /// @notice Transfers ownership of the pool to a new owner. Can only be called by the
+    ///         current owner of the pool.
     /// @param newOwner The address of the new owner.
     function transferOwnership(address newOwner) public virtual onlyOwner {
         owner = newOwner;
