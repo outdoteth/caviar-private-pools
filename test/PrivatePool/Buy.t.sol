@@ -21,7 +21,7 @@ contract BuyTest is Fixture {
 
     uint256[] tokenIds;
     uint256[] tokenWeights;
-    bytes32[][] proofs;
+    PrivatePool.MerkleMultiProof proofs;
 
     function setUp() public {
         privatePool = new PrivatePool();

@@ -9,6 +9,11 @@ import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 
 contract PrivatePool is ERC721TokenReceiver {
+    struct MerkleMultiProof {
+        bytes32[] proof;
+        bool[] flags;
+    }
+
     event OwnershipTransferred(address indexed user, address indexed newOwner);
     event Initialize(
         address indexed baseToken,
@@ -103,10 +108,10 @@ contract PrivatePool is ERC721TokenReceiver {
     ///         on the current price, fee rate and assigned NFT weights.
     /// @param tokenIds The token IDs of the NFTs to buy.
     /// @param tokenWeights The weights of the NFTs to buy.
-    /// @param proofs The merkle proof for the weights of each NFT to buy.
+    /// @param proof The merkle proof for the weights of each NFT to buy.
     /// @return netInputAmount The amount of base tokens spent inclusive of fees.
     /// @return feeAmount The amount of base tokens spent on fees.
-    function buy(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, bytes32[][] calldata proofs)
+    function buy(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, MerkleMultiProof calldata proof)
         public
         payable
         returns (uint256 netInputAmount, uint256 feeAmount)
@@ -114,7 +119,7 @@ contract PrivatePool is ERC721TokenReceiver {
         // ~~~ Checks ~~~ //
 
         // calculate the sum of weights of the NFTs to buy
-        uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proofs);
+        uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
 
         // calculate the required net input amount and fee amount
         (netInputAmount, feeAmount) = buyQuote(weightSum);
@@ -157,20 +162,20 @@ contract PrivatePool is ERC721TokenReceiver {
     ///         the current price, fee rate and assigned NFT weights.
     /// @param tokenIds The token IDs of the NFTs to sell.
     /// @param tokenWeights The weights of the NFTs to sell.
-    /// @param proofs The merkle proof for the weights of each NFT to sell.
+    /// @param proof The merkle proof for the weights of each NFT to sell.
     /// @param stolenNftProofs The proofs that show each NFT is not stolen.
     /// @return netOutputAmount The amount of base tokens received inclusive of fees.
     /// @return feeAmount The amount of base tokens to pay in fees.
     function sell(
         uint256[] calldata tokenIds,
         uint256[] calldata tokenWeights,
-        bytes32[][] calldata proofs,
+        MerkleMultiProof calldata proof,
         IStolenNftOracle.Message[] calldata stolenNftProofs
     ) public returns (uint256 netOutputAmount, uint256 feeAmount) {
         // ~~~ Checks ~~~ //
 
         // calculate the sum of weights of the NFTs to sell
-        uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proofs);
+        uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
 
         // calculate the net output amount and fee amount
         (netOutputAmount, feeAmount) = sellQuote(weightSum);
@@ -340,7 +345,7 @@ contract PrivatePool is ERC721TokenReceiver {
     function sumWeightsAndValidateProof(
         uint256[] calldata tokenIds,
         uint256[] calldata tokenWeights,
-        bytes32[][] calldata proof
+        MerkleMultiProof calldata proof
     ) public view returns (uint256) {
         // if the merkle root is not set then set the weight of each nft to be 1e18
         if (merkleRoot == bytes32(0)) {
@@ -348,14 +353,17 @@ contract PrivatePool is ERC721TokenReceiver {
         }
 
         uint256 sum;
+        bytes32[] memory leafs = new bytes32[](tokenIds.length);
         for (uint256 i = 0; i < tokenIds.length; i++) {
+            // create the leaf for the merkle proof
+            leafs[i] = keccak256(bytes.concat(keccak256(abi.encode(tokenIds[i], tokenWeights[i]))));
+
             // sum each token weight
             sum += tokenWeights[i];
-
-            // validate that the weight is valid against the merkle proof
-            bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(tokenIds[i], tokenWeights[i]))));
-            if (!MerkleProofLib.verify(proof[i], merkleRoot, leaf)) revert InvalidMerkleProof();
         }
+
+        // validate that the weights are valid against the merkle proof
+        if (!MerkleProofLib.verifyMultiProof(proof.proof, merkleRoot, leafs, proof.flags)) revert InvalidMerkleProof();
 
         return sum;
     }

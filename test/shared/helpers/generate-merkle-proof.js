@@ -14,8 +14,13 @@ const generateMerkleProof = (tokenIds, tokenWeights, allTokenWeights) => {
 };
 
 const main = async () => {
-  const tokenIds = process.argv[2];
-  const tokenWeights = process.argv[3];
+  const tokenIds = defaultAbiCoder
+    .decode(["uint256[]"], process.argv[2])[0]
+    .map((v) => v.toString());
+
+  const tokenWeights = defaultAbiCoder
+    .decode(["uint256[]"], process.argv[3])[0]
+    .map((v) => v.toString());
 
   const allTokenWeights = JSON.parse(
     fs.readFileSync(path.join(__dirname, "./token-weights.json"), {
