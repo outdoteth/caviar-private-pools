@@ -9,6 +9,7 @@ import "solmate/utils/LibString.sol";
 import "./shared/Milady.sol";
 import "./shared/ShibaInu.sol";
 import "./shared/StolenNftOracle.sol";
+import "./shared/Airdrop.sol";
 
 import "../src/PrivatePool.sol";
 
@@ -18,6 +19,7 @@ contract Fixture is Test, ERC721TokenReceiver {
     Milady public milady = new Milady();
     ShibaInu public shibaInu = new ShibaInu();
     StolenNftOracle public stolenNftOracle = new StolenNftOracle();
+    Airdrop public airdrop = new Airdrop();
 
     constructor() {}
 

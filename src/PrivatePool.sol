@@ -343,9 +343,26 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @notice Executes a transaction from the pool account to a target contrat. The caller
     ///         must be the owner of the pool. This allows for use cases such as claiming airdrops.
     /// @param target The address of the target contract.
-    /// @param value The amount of base tokens to send.
     /// @param data The data to send to the target contract.
-    function execute(address target, uint256 value, bytes[] memory data) public payable onlyOwner {}
+    /// @return returnData The return data of the transaction.
+    function execute(address target, bytes memory data) public payable onlyOwner returns (bytes memory) {
+        // call the target with the value and data
+        (bool success, bytes memory returnData) = target.call{value: msg.value}(data);
+
+        // if the call succeeded return the return data
+        if (success) return returnData;
+
+        // if we got an error bubble up the error message
+        if (returnData.length > 0) {
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                let returnData_size := mload(returnData)
+                revert(add(32, returnData), returnData_size)
+            }
+        } else {
+            revert();
+        }
+    }
 
     /// @notice Sets the virtual base token reserves and virtual NFT reserves. Can only be called
     ///         by the owner of the pool.
