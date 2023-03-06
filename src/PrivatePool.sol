@@ -26,6 +26,7 @@ contract PrivatePool is ERC721TokenReceiver {
         uint256[] indexed tokenIds, uint256[] indexed tokenWeights, uint256 indexed outputAmount, uint256 feeAmount
     );
     event Deposit(uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
+    event Withdraw(address indexed nft, uint256[] indexed tokenIds, address indexed token, uint256 amount);
 
     error AlreadyInitialized();
     error Unauthorized();
@@ -233,15 +234,30 @@ contract PrivatePool is ERC721TokenReceiver {
         emit Deposit(tokenIds, baseTokenAmount);
     }
 
-    /// @notice Withdraws NFTs from the pool. Can only be called by the owner of the pool.
-    /// @param token The address of the NFT.
+    /// @notice Withdraws NFTs and tokens from the pool. Can only be called by the owner of the pool.
+    /// @param _nft The address of the NFT.
     /// @param tokenIds The token IDs of the NFTs to withdraw.
-    function withdrawNfts(address token, uint256[] calldata tokenIds) public onlyOwner {}
+    /// @param token The address of the token to withdraw.
+    /// @param tokenAmount The amount of tokens to withdraw.
+    function withdraw(address _nft, uint256[] calldata tokenIds, address token, uint256 tokenAmount) public onlyOwner {
+        // ~~~ Interactions ~~~ //
 
-    /// @notice Withdraws tokens from the pool. Can only be called by the owner of the pool.
-    /// @param token The address of the token.
-    /// @param amount The amount of tokens to withdraw.
-    function withdrawTokens(address token, uint256 amount) public onlyOwner {}
+        // transfer the nfts to the caller
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            ERC721(_nft).safeTransferFrom(address(this), msg.sender, tokenIds[i]);
+        }
+
+        if (token == address(0)) {
+            // transfer the ETH to the caller
+            payable(msg.sender).transfer(tokenAmount);
+        } else {
+            // transfer the tokens to the caller
+            ERC20(token).transfer(msg.sender, tokenAmount);
+        }
+
+        // emit the withdraw event
+        emit Withdraw(_nft, tokenIds, token, tokenAmount);
+    }
 
     /// @notice Changes a set of NFTs that the caller owns for another set of NFTs in the pool.
     ///         The caller must approve the pool to transfer the NFTs. The sum of the caller's
