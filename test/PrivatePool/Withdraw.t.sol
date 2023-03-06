@@ -5,7 +5,7 @@ import "../Fixture.sol";
 import "../../src/PrivatePool.sol";
 
 contract WithdrawTest is Fixture {
-    event Withdraw(address indexed nft, uint256[] indexed tokenIds, address indexed token, uint256 amount);
+    event Withdraw(address indexed nft, uint256[] tokenIds, address token, uint256 amount);
 
     PrivatePool public privatePool;
 

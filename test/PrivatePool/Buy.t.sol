@@ -5,9 +5,7 @@ import "../Fixture.sol";
 import "../../src/PrivatePool.sol";
 
 contract BuyTest is Fixture {
-    event Buy(
-        uint256[] indexed tokenIds, uint256[] indexed tokenWeights, uint256 indexed inputAmount, uint256 feeAmount
-    );
+    event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount);
 
     PrivatePool public privatePool;
 

@@ -5,7 +5,7 @@ import "../Fixture.sol";
 import "../../src/PrivatePool.sol";
 
 contract DepositTest is Fixture {
-    event Deposit(uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
+    event Deposit(uint256[] tokenIds, uint256 baseTokenAmount);
 
     PrivatePool public privatePool;
 

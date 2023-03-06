@@ -24,19 +24,23 @@ contract PrivatePool is ERC721TokenReceiver {
         bytes32 merkleRoot,
         address stolenNftOracle
     );
-    event Buy(
-        uint256[] indexed tokenIds, uint256[] indexed tokenWeights, uint256 indexed inputAmount, uint256 feeAmount
+    event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount);
+    event Sell(uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount);
+    event Deposit(uint256[] tokenIds, uint256 baseTokenAmount);
+    event Withdraw(address indexed nft, uint256[] tokenIds, address token, uint256 amount);
+    event Change(
+        uint256[] inputTokenIds,
+        uint256[] inputTokenWeights,
+        uint256[] outputTokenIds,
+        uint256[] outputTokenWeights,
+        uint256 feeAmount
     );
-    event Sell(
-        uint256[] indexed tokenIds, uint256[] indexed tokenWeights, uint256 indexed outputAmount, uint256 feeAmount
-    );
-    event Deposit(uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
-    event Withdraw(address indexed nft, uint256[] indexed tokenIds, address indexed token, uint256 amount);
 
     error AlreadyInitialized();
     error Unauthorized();
     error InvalidEthAmount();
     error InvalidMerkleProof();
+    error InsufficientInputWeight();
 
     address public baseToken;
     address public nft;
@@ -82,6 +86,8 @@ contract PrivatePool is ERC721TokenReceiver {
     ) public {
         // prevent duplicate initialization
         if (initialized) revert AlreadyInitialized();
+
+        // TODO: Add fee rate check is within bounds
 
         // set the state variables
         baseToken = _baseToken;
@@ -267,6 +273,10 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @notice Changes a set of NFTs that the caller owns for another set of NFTs in the pool.
     ///         The caller must approve the pool to transfer the NFTs. The sum of the caller's
     ///         NFT weights must be less than or equal to the sum of the output pool NFTs weights.
+    ///         The caller must also pay a fee depending on the current price and net output weight.
+    /// @dev   DO NOT call this function directly unless you are sure. The price can be manipulated
+    ///        to increase the fee. Instead use a wrapper contract to validate the max fee amount and
+    ///        revert if the fee is too large.
     /// @param inputTokenIds The token IDs of the NFTs to change.
     /// @param inputTokenWeights The weights of the NFTs to change.
     /// @param inputProof The merkle proof for the weights of each NFT to change.
@@ -276,11 +286,59 @@ contract PrivatePool is ERC721TokenReceiver {
     function change(
         uint256[] calldata inputTokenIds,
         uint256[] calldata inputTokenWeights,
-        bytes32[][] calldata inputProof,
-        uint256[] memory outputTokenIds,
+        MerkleMultiProof calldata inputProof,
+        uint256[] calldata outputTokenIds,
         uint256[] calldata outputTokenWeights,
-        bytes32[][] calldata outputProof
-    ) public {}
+        MerkleMultiProof calldata outputProof
+    ) public payable returns (uint256 feeAmount) {
+        // ~~~ Checks ~~~ //
+
+        // fix stack too deep
+        {
+            // calculate the sum of weights for the input nfts
+            uint256 inputWeightSum = sumWeightsAndValidateProof(inputTokenIds, inputTokenWeights, inputProof);
+
+            // calculate the sum of weights for the output nfts
+            uint256 outputWeightSum = sumWeightsAndValidateProof(outputTokenIds, outputTokenWeights, outputProof);
+
+            // check that the input weights are greater than or equal to the output weights
+            if (inputWeightSum < outputWeightSum) revert InsufficientInputWeight();
+
+            // calculate the fee amount
+            feeAmount = changeFeeQuote(outputWeightSum);
+        }
+
+        // ~~~ Interactions ~~~ //
+
+        // check caller sent enough ETH if base token is ETH
+        // or that the caller sent 0 ETH if base token is not ETH
+        if ((baseToken == address(0) && msg.value < feeAmount) || (baseToken != address(0) && msg.value > 0)) {
+            revert InvalidEthAmount();
+        }
+
+        if (baseToken != address(0)) {
+            // transfer the fee amount of base tokens from the caller
+            ERC20(baseToken).transferFrom(msg.sender, address(this), feeAmount);
+        }
+
+        // if the base token is ETH then refund any excess ETH to the caller
+        if (baseToken == address(0) && msg.value > feeAmount) {
+            payable(msg.sender).transfer(msg.value - feeAmount);
+        }
+
+        // transfer the input nfts from the caller
+        for (uint256 i = 0; i < inputTokenIds.length; i++) {
+            ERC721(nft).safeTransferFrom(msg.sender, address(this), inputTokenIds[i]);
+        }
+
+        // transfer the output nfts to the caller
+        for (uint256 i = 0; i < outputTokenIds.length; i++) {
+            ERC721(nft).safeTransferFrom(address(this), msg.sender, outputTokenIds[i]);
+        }
+
+        // emit the change event
+        emit Change(inputTokenIds, inputTokenWeights, outputTokenIds, outputTokenWeights, feeAmount);
+    }
 
     /// @notice Executes a transaction from the pool account to a target contrat. The caller
     ///         must be the owner of the pool. This allows for use cases such as claiming airdrops.
@@ -336,6 +394,10 @@ contract PrivatePool is ERC721TokenReceiver {
         netOutputAmount = inputAmount - feeAmount;
     }
 
+    function changeFeeQuote(uint256 outputAmount) public view returns (uint256 feeAmount) {
+        feeAmount = (price() * outputAmount * feeRate) / (1e18 * 10_000);
+    }
+
     /// @notice Sums the weights of each NFT and validates that the weights are correct
     ///         by verifying the merkle proof.
     /// @param tokenIds The token IDs of the NFTs to sum the weights for.
@@ -363,8 +425,14 @@ contract PrivatePool is ERC721TokenReceiver {
         }
 
         // validate that the weights are valid against the merkle proof
-        if (!MerkleProofLib.verifyMultiProof(proof.proof, merkleRoot, leafs, proof.flags)) revert InvalidMerkleProof();
+        if (!MerkleProofLib.verifyMultiProof(proof.proof, merkleRoot, leafs, proof.flags)) {
+            revert InvalidMerkleProof();
+        }
 
         return sum;
+    }
+
+    function price() public view returns (uint256) {
+        return virtualBaseTokenReserves * 1e18 / virtualNftReserves;
     }
 }
