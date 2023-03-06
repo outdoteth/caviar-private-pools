@@ -40,16 +40,14 @@ contract Fixture is Test, ERC721TokenReceiver {
         bytes32[][] memory proofs = new bytes32[][](tokenIds.length);
 
         string[] memory inputs = new string[](4);
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            inputs[0] = "node";
-            inputs[1] = "./test/shared/helpers/generate-merkle-proof.js";
-            inputs[2] = LibString.toString(tokenIds[i]);
-            inputs[3] = LibString.toString(weights[i]);
+        inputs[0] = "node";
+        inputs[1] = "./test/shared/helpers/generate-merkle-proof.js";
+        inputs[2] = string(abi.encode(tokenIds));
+        inputs[3] = string(abi.encode(weights));
 
-            bytes memory res = vm.ffi(inputs);
-            bytes32[] memory output = abi.decode(res, (bytes32[]));
-            proofs[i] = output;
-        }
+        bytes memory res = vm.ffi(inputs);
+        bytes32[] memory output = abi.decode(res, (bytes32[]));
+        proofs[0] = output;
 
         return proofs;
     }

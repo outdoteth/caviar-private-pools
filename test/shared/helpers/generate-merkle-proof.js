@@ -3,19 +3,21 @@ const path = require("path");
 const { StandardMerkleTree } = require("@openzeppelin/merkle-tree");
 const { defaultAbiCoder, parseEther } = require("ethers/lib/utils");
 
-const generateMerkleProof = (tokenId, tokenWeight, tokenWeights) => {
-  const tree = StandardMerkleTree.of(tokenWeights, ["uint256", "uint256"]);
+const generateMerkleProof = (tokenIds, tokenWeights, allTokenWeights) => {
+  const tree = StandardMerkleTree.of(allTokenWeights, ["uint256", "uint256"]);
 
-  const proof = tree.getProof([tokenId, tokenWeight]);
+  const proof = tree.getMultiProof(
+    tokenIds.map((v, i) => [v, tokenWeights[i]])
+  );
 
   return proof;
 };
 
 const main = async () => {
-  const tokenId = process.argv[2];
-  const tokenWeight = process.argv[3];
+  const tokenIds = process.argv[2];
+  const tokenWeights = process.argv[3];
 
-  const tokenWeights = JSON.parse(
+  const allTokenWeights = JSON.parse(
     fs.readFileSync(path.join(__dirname, "./token-weights.json"), {
       encoding: "utf8",
     })
@@ -24,9 +26,15 @@ const main = async () => {
     parseEther(tokenWeight.toString()).toString(),
   ]);
 
-  const merkleProof = generateMerkleProof(tokenId, tokenWeight, tokenWeights);
+  const { proof, proofFlags } = generateMerkleProof(
+    tokenIds,
+    tokenWeights,
+    allTokenWeights
+  );
 
-  process.stdout.write(defaultAbiCoder.encode(["bytes32[]"], [merkleProof]));
+  process.stdout.write(
+    defaultAbiCoder.encode(["bytes32[]", "bool[]"], [proof, proofFlags])
+  );
   process.exit();
 };
 
