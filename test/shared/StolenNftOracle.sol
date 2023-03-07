@@ -12,7 +12,7 @@ contract StolenNftOracle is IStolenNftOracle {
         stolenNfts[nft][tokenId] = true;
     }
 
-    function validateTokensAreNotStolen(address tokenAddress, uint256[] calldata tokenIds, Message[] calldata proofs)
+    function validateTokensAreNotStolen(address tokenAddress, uint256[] calldata tokenIds, Message[] calldata)
         external
         view
     {

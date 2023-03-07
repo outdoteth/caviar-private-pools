@@ -63,7 +63,7 @@ contract ChangeTest is Fixture {
         outputTokenIds.push(3);
         outputTokenIds.push(4);
         outputTokenIds.push(5);
-        uint256 feeAmount = privatePool.changeFeeQuote(outputTokenIds.length * 1e18);
+        uint256 feeAmount = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
 
         // act
         vm.expectEmit(true, true, true, true);
@@ -268,7 +268,7 @@ contract ChangeTest is Fixture {
         inputProof = generateMerkleProofs(inputTokenIds, inputTokenWeights);
         outputProof = generateMerkleProofs(outputTokenIds, outputTokenWeights);
 
-        uint256 feeAmount = privatePool.changeFeeQuote(1.11e18);
+        uint256 feeAmount = privatePool.changeFeeQuote(1.1e18 + 1.15e18);
 
         // act
         vm.expectEmit(true, true, true, true);
