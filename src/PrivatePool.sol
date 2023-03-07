@@ -278,7 +278,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @notice Changes a set of NFTs that the caller owns for another set of NFTs in the pool.
     ///         The caller must approve the pool to transfer the NFTs. The sum of the caller's
     ///         NFT weights must be less than or equal to the sum of the output pool NFTs weights.
-    ///         The caller must also pay a fee depending on the current price and net output weight.
+    ///         The caller must also pay a fee depending on the current price and net input weight.
     /// @dev   DO NOT call this function directly unless you are sure. The price can be manipulated
     ///        to increase the fee. Instead use a wrapper contract to validate the max fee amount and
     ///        revert if the fee is too large.
@@ -310,7 +310,7 @@ contract PrivatePool is ERC721TokenReceiver {
             if (inputWeightSum < outputWeightSum) revert InsufficientInputWeight();
 
             // calculate the fee amount
-            feeAmount = changeFeeQuote(outputWeightSum);
+            feeAmount = changeFeeQuote(inputWeightSum);
         }
 
         // ~~~ Interactions ~~~ //
@@ -379,7 +379,7 @@ contract PrivatePool is ERC721TokenReceiver {
         virtualBaseTokenReserves = newVirtualBaseTokenReserves;
         virtualNftReserves = newVirtualNftReserves;
 
-        // emit the virtual reserves event
+        // emit the set virtual reserves event
         emit SetVirtualReserves(newVirtualBaseTokenReserves, newVirtualNftReserves);
     }
 
@@ -390,7 +390,7 @@ contract PrivatePool is ERC721TokenReceiver {
         // set the merkle root
         merkleRoot = newMerkleRoot;
 
-        // emit the merkle root event
+        // emit the set merkle root event
         emit SetMerkleRoot(newMerkleRoot);
     }
 
@@ -405,7 +405,7 @@ contract PrivatePool is ERC721TokenReceiver {
         // set the fee rate
         feeRate = newFeeRate;
 
-        // emit the fee rate event
+        // emit the set fee rate event
         emit SetFeeRate(newFeeRate);
     }
 
@@ -417,7 +417,7 @@ contract PrivatePool is ERC721TokenReceiver {
         // set the stolen NFT oracle
         stolenNftOracle = newStolenNftOracle;
 
-        // emit the stolen NFT oracle event
+        // emit the set stolen NFT oracle event
         emit SetStolenNftOracle(newStolenNftOracle);
     }
 
@@ -425,7 +425,10 @@ contract PrivatePool is ERC721TokenReceiver {
     ///         current owner of the pool.
     /// @param newOwner The address of the new owner.
     function transferOwnership(address newOwner) public virtual onlyOwner {
+        // set the new owner
         owner = newOwner;
+
+        // emit the ownership transferred event
         emit OwnershipTransferred(msg.sender, newOwner);
     }
 
@@ -443,16 +446,33 @@ contract PrivatePool is ERC721TokenReceiver {
         netInputAmount = inputAmount + feeAmount;
     }
 
+    /// @notice Returns the output amount of selling a given amount of NFTs (in 1e18) inclusive of
+    ///         the fee which is dependent on the currently set fee rate.
+    /// @param inputAmount The amount of NFTs to buy multiplied by 1e18.
+    /// @return netOutputAmount The output amount of base tokens inclusive of the fee.
+    /// @return feeAmount The fee amount.
     function sellQuote(uint256 inputAmount) public view returns (uint256 netOutputAmount, uint256 feeAmount) {
         // calculate the output amount based on xy=k invariant
-        uint256 outputAmount = inputAmount * (virtualNftReserves + inputAmount) / virtualBaseTokenReserves;
+        uint256 outputAmount = inputAmount * virtualBaseTokenReserves / (virtualNftReserves + inputAmount);
 
         feeAmount = outputAmount * feeRate / 10_000;
-        netOutputAmount = inputAmount - feeAmount;
+        netOutputAmount = outputAmount - feeAmount;
     }
 
-    function changeFeeQuote(uint256 outputAmount) public view returns (uint256 feeAmount) {
-        feeAmount = (price() * outputAmount * feeRate) / (1e18 * 10_000);
+    /// @notice Returns the fee required to change a given amount of NFTs (in 1e18). The fee is
+    ///         based on the current price in the pool and the currently set fee rate.
+    /// @param inputAmount The amount of NFTs to change multiplied by 1e18.
+    /// @return feeAmount The fee amount.
+    function changeFeeQuote(uint256 inputAmount) public view returns (uint256 feeAmount) {
+        feeAmount = (virtualBaseTokenReserves * inputAmount * feeRate) / (10_000 * virtualNftReserves);
+    }
+
+    /// @notice Returns the price of the pool to 18 decimals of accuracy.
+    /// @return price The price of the pool.
+    function price() public view returns (uint256) {
+        // ensure that the exponent is always to 18 decimals of accuracy
+        uint256 exponent = baseToken == address(0) ? 18 : (36 - ERC20(baseToken).decimals());
+        return (virtualBaseTokenReserves * 10 ** exponent) / virtualNftReserves;
     }
 
     /// @notice Sums the weights of each NFT and validates that the weights are correct
@@ -487,9 +507,5 @@ contract PrivatePool is ERC721TokenReceiver {
         }
 
         return sum;
-    }
-
-    function price() public view returns (uint256) {
-        return virtualBaseTokenReserves * 1e18 / virtualNftReserves;
     }
 }
