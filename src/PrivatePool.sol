@@ -69,6 +69,8 @@ contract PrivatePool is ERC721TokenReceiver {
         _;
     }
 
+    receive() external payable {}
+
     /// @notice Initializes the private pool and sets the initial parameters.
     ///         Should only be called once by the factory.
     /// @param _baseToken The address of the base token
