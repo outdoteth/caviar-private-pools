@@ -10,14 +10,35 @@ import {PrivatePool} from "./PrivatePool.sol";
 contract Factory {
     using LibClone for address;
 
+    /// @notice Emitted when a private pool is created.
+    /// @param privatePool The address of the private pool.
+    /// @param tokenIds The token ids that were deposited to the private pool.
+    /// @param baseTokenAmount The amount of base tokens that were deposited to the private pool.
     event Create(address indexed privatePool, uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
 
+    /// @notice The address of the private pool implementation that proxies point to.
     address public immutable privatePoolImplementation;
 
+    /// @notice The constructor initializes the private pool implementation.
+    /// @param _privatePoolImplementation The address of the private pool implementation.
     constructor(address _privatePoolImplementation) {
         privatePoolImplementation = _privatePoolImplementation;
     }
 
+    /// @notice Creates a new private pool using the minimal proxy pattern that points to the
+    ///         private pool implementation. The caller must approve the factory to transfer
+    ///         the NFTs that will be deposited to the pool.
+    /// @param _baseToken The address of the base token.
+    /// @param _nft The address of the NFT.
+    /// @param _virtualBaseTokenReserves The virtual base token reserves.
+    /// @param _virtualNftReserves The virtual NFT reserves.
+    /// @param _feeRate The fee rate.
+    /// @param _merkleRoot The merkle root.
+    /// @param _stolenNftOracle The address of the stolen NFT oracle.
+    /// @param _salt The salt that will used on deployment.
+    /// @param tokenIds The token ids to deposit to the pool.
+    /// @param baseTokenAmount The amount of base tokens to deposit to the pool.
+    /// @return privatePool The address of the private pool.
     function create(
         address _baseToken,
         address _nft,
@@ -68,11 +89,15 @@ contract Factory {
         emit Create(address(privatePool), tokenIds, baseTokenAmount);
     }
 
-    function predictDeterministicAddress(address implementation, bytes32 salt, address deployer)
+    /// @notice Predicts the deployment address of a new private pool.
+    /// @param salt The salt that will used on deployment.
+    /// @param deployer The address of the deployer.
+    /// @return predictedAddress The predicted deployment address of the private pool.
+    function predictPoolDeploymentAddress(bytes32 salt, address deployer)
         public
         view
-        returns (address)
+        returns (address predictedAddress)
     {
-        return LibClone.predictDeterministicAddress(implementation, salt, deployer);
+        predictedAddress = LibClone.predictDeterministicAddress(privatePoolImplementation, salt, deployer);
     }
 }

@@ -33,8 +33,7 @@ contract CreateTest is Fixture {
 
     function test_EmitsCreateEvent() public {
         // arrange
-        address predictedAddress =
-            factory.predictDeterministicAddress(address(privatePoolImplementation), salt, address(factory));
+        address predictedAddress = factory.predictPoolDeploymentAddress(salt, address(factory));
 
         // act
         vm.expectEmit(true, true, true, true);
