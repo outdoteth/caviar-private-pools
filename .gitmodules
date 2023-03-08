@@ -12,3 +12,7 @@
 [submodule "lib/royalty-registry-solidity"]
 	path = lib/royalty-registry-solidity
 	url = https://github.com/manifoldxyz/royalty-registry-solidity
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+	branch = v4.8.2
