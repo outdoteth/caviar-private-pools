@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "../Fixture.sol";
 
-contract ExecuteTest is Fixture {
+contract SettersTest is Fixture {
     event SetVirtualReserves(uint128 virtualBaseTokenReserves, uint128 virtualNftReserves);
     event SetMerkleRoot(bytes32 merkleRoot);
     event SetFeeRate(uint16 feeRate);

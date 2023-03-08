@@ -12,6 +12,7 @@ import "./shared/StolenNftOracle.sol";
 import "./shared/Airdrop.sol";
 
 import "../src/PrivatePool.sol";
+import "../src/EthRouter.sol";
 
 contract Fixture is Test, ERC721TokenReceiver {
     using stdStorage for StdStorage;
@@ -20,6 +21,7 @@ contract Fixture is Test, ERC721TokenReceiver {
     ShibaInu public shibaInu = new ShibaInu();
     StolenNftOracle public stolenNftOracle = new StolenNftOracle();
     Airdrop public airdrop = new Airdrop();
+    EthRouter public ethRouter = new EthRouter();
 
     constructor() {}
 
