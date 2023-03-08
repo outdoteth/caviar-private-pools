@@ -40,7 +40,8 @@ contract BuyTest is Fixture {
                 tokenIds: tokenIds,
                 tokenWeights: new uint256[](0),
                 proof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
-                baseTokenAmount: baseTokenAmount
+                baseTokenAmount: baseTokenAmount,
+                isPublicPool: false
             })
         );
     }
@@ -92,5 +93,20 @@ contract BuyTest is Fixture {
         vm.expectRevert(EthRouter.DeadlinePassed.selector);
         vm.warp(100);
         ethRouter.buy{value: maxInputAmount}(buys, 99);
+    }
+
+    function test_PaysRoyalties() public {
+        // arrange
+        uint256 royaltyFeeRate = 0.1e18; // 10%
+        address royaltyRecipient = address(0xbeefbeef);
+        milady.setRoyaltyInfo(royaltyFeeRate, royaltyRecipient);
+        uint256 royaltyFee = maxInputAmount * royaltyFeeRate / 1e18;
+        maxInputAmount = maxInputAmount + royaltyFee;
+
+        // act
+        ethRouter.buy{value: maxInputAmount}(buys, 0);
+
+        // assert
+        assertEq(address(0xbeefbeef).balance, royaltyFee, "Should have paid royalties");
     }
 }

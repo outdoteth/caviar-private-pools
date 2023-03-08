@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "solmate/tokens/ERC721.sol";
 import "solmate/utils/LibString.sol";
+import {RoyaltyRegistry} from "royalty-registry-solidity/RoyaltyRegistry.sol";
 
 import "./shared/Milady.sol";
 import "./shared/ShibaInu.sol";
@@ -21,7 +22,8 @@ contract Fixture is Test, ERC721TokenReceiver {
     ShibaInu public shibaInu = new ShibaInu();
     StolenNftOracle public stolenNftOracle = new StolenNftOracle();
     Airdrop public airdrop = new Airdrop();
-    EthRouter public ethRouter = new EthRouter();
+    RoyaltyRegistry public royaltyRegistry = new RoyaltyRegistry(address(0));
+    EthRouter public ethRouter = new EthRouter(royaltyRegistry);
 
     constructor() {}
 
