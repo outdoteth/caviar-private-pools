@@ -16,3 +16,6 @@
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
 	branch = v4.8.2
+[submodule "lib/caviar"]
+	path = lib/caviar
+	url = https://github.com/outdoteth/caviar
