@@ -1,4 +1,13 @@
+@manifoldxyz/libraries-solidity/=lib/royalty-registry-solidity/lib/libraries-solidity/
+@openzeppelin/contracts-upgradeable/=lib/royalty-registry-solidity/lib/openzeppelin-contracts-upgradeable/contracts/
+@openzeppelin/contracts/=lib/royalty-registry-solidity/lib/openzeppelin-contracts/contracts/
+create2-helpers/=lib/royalty-registry-solidity/lib/create2-helpers/
+create2-scripts/=lib/royalty-registry-solidity/lib/create2-helpers/script/
 ds-test/=lib/forge-std/lib/ds-test/src/
 forge-std/=lib/forge-std/src/
+libraries-solidity/=lib/royalty-registry-solidity/lib/libraries-solidity/contracts/
+openzeppelin-contracts-upgradeable/=lib/royalty-registry-solidity/lib/openzeppelin-contracts-upgradeable/
+openzeppelin-contracts/=lib/royalty-registry-solidity/lib/openzeppelin-contracts/
+royalty-registry-solidity/=lib/royalty-registry-solidity/contracts
 solady/=lib/solady/src/
 solmate/=lib/solmate/src/

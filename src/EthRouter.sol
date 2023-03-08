@@ -2,6 +2,8 @@
 pragma solidity ^0.8.19;
 
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
+import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
 
 import {PrivatePool} from "./PrivatePool.sol";
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
@@ -128,4 +130,38 @@ contract EthRouter is ERC721TokenReceiver {
     {}
     function withdraw(Withdraw[] calldata withdraws, uint256 minPrice, uint256 maxPrice, uint256 deadline) public {}
     function change(Change[] calldata changes, uint256 maxFeeAmount, uint256 deadline) public payable {}
+
+    /// @notice Pay royalties for a list of NFTs at a specified price for each NFT.
+    /// @param tokenAddress The NFT address.
+    /// @param tokenIds The tokenIds to pay royalties for.
+    /// @param salePrice The sale price for each NFT.
+    /// @return totalRoyaltyAmount The total amount of royalties paid.
+    function _payRoyalties(address tokenAddress, uint256[] calldata tokenIds, uint256 salePrice)
+        internal
+        returns (uint256 totalRoyaltyAmount)
+    {
+        address lookupAddress = royaltyRegistry.getRoyaltyLookupAddress(tokenAddress);
+
+        // assume the royalty amount and recipient is the same for each token
+        (address _recipient, uint256 royaltyAmount) = _getRoyalty(lookupAddress, tokenIds[0], salePrice);
+        uint256 totalRoyaltyAmount = royaltyAmount * tokenIds.length;
+
+        if (totalRoyaltyAmount > 0 && recipient != address(0)) {
+            recipient.safeTransferETH(totalRoyaltyAmount);
+        }
+    }
+
+    /// @notice Get the royalty for a specific NFT.
+    /// @param lookupAddress The lookup address for the NFT royalty info.
+    /// @param tokenId The tokenId to get the royalty for.
+    /// @param salePrice The sale price for the NFT.
+    function _getRoyalty(address lookupAddress, uint256 tokenId, uint256 salePrice)
+        internal
+        view
+        returns (address recipient, uint256 royaltyAmount)
+    {
+        if (IERC2981(lookupAddress).supportsInterface(type(IERC2981).interfaceId)) {
+            (recipient, royaltyAmount) = IERC2981(lookupAddress).royaltyInfo(tokenId, salePrice);
+        }
+    }
 }
