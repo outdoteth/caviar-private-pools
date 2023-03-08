@@ -11,3 +11,4 @@ openzeppelin/=lib/openzeppelin-contracts/contracts
 royalty-registry-solidity/=lib/royalty-registry-solidity/contracts
 solady/=lib/solady/src/
 solmate/=lib/solmate/src/
+caviar/=lib/caviar/src/

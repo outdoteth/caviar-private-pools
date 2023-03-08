@@ -98,6 +98,6 @@ contract Factory {
         view
         returns (address predictedAddress)
     {
-        predictedAddress = LibClone.predictDeterministicAddress(privatePoolImplementation, salt, deployer);
+        predictedAddress = privatePoolImplementation.predictDeterministicAddress(salt, deployer);
     }
 }

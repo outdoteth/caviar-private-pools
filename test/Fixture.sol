@@ -6,12 +6,14 @@ import "forge-std/console.sol";
 import "solmate/tokens/ERC721.sol";
 import "solmate/utils/LibString.sol";
 import {RoyaltyRegistry} from "royalty-registry-solidity/RoyaltyRegistry.sol";
+import {Caviar, Pair} from "caviar/Caviar.sol";
 
 import "./shared/Milady.sol";
 import "./shared/ShibaInu.sol";
 import "./shared/StolenNftOracle.sol";
 import "./shared/Airdrop.sol";
 
+import "../src/Factory.sol";
 import "../src/PrivatePool.sol";
 import "../src/EthRouter.sol";
 
@@ -24,6 +26,9 @@ contract Fixture is Test, ERC721TokenReceiver {
     Airdrop public airdrop = new Airdrop();
     RoyaltyRegistry public royaltyRegistry = new RoyaltyRegistry(address(0));
     EthRouter public ethRouter = new EthRouter(royaltyRegistry);
+    Caviar public caviar = new Caviar(address(stolenNftOracle));
+    PrivatePool public privatePoolImplementation = new PrivatePool();
+    Factory public factory = new Factory(address(privatePoolImplementation));
 
     constructor() {}
 

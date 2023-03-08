@@ -2,11 +2,8 @@
 pragma solidity ^0.8.19;
 
 import "../Fixture.sol";
-import "../../src/Factory.sol";
 
 contract ConstructorTest is Fixture {
-    Factory public factory;
-
     function test_InitsParameters() public {
         // arrange
         address privatePoolImplementation = address(0x123);

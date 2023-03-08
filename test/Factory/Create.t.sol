@@ -2,13 +2,9 @@
 pragma solidity ^0.8.19;
 
 import "../Fixture.sol";
-import "../../src/Factory.sol";
 
 contract CreateTest is Fixture {
     event Create(address indexed privatePool, uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
-
-    Factory public factory;
-    PrivatePool public privatePoolImplementation;
 
     address baseToken = address(0);
     address nft = address(0);
