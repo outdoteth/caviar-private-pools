@@ -9,3 +9,6 @@
 	path = lib/solady
 	url = https://github.com/Vectorized/solady
 	branch = v0.0.81
+[submodule "lib/royalty-registry-solidity"]
+	path = lib/royalty-registry-solidity
+	url = https://github.com/manifoldxyz/royalty-registry-solidity
