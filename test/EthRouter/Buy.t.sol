@@ -45,7 +45,7 @@ contract BuyTest is Fixture {
         (uint256 baseTokenAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
         buys.push(
             EthRouter.Buy({
-                privatePool: payable(address(privatePool)),
+                pool: payable(address(privatePool)),
                 nft: address(milady),
                 tokenIds: tokenIds,
                 tokenWeights: new uint256[](0),
@@ -90,7 +90,7 @@ contract BuyTest is Fixture {
         // act
         for (uint256 i = 0; i < buys.length; i++) {
             vm.expectCall(
-                buys[i].privatePool,
+                buys[i].pool,
                 buys[i].baseTokenAmount,
                 abi.encodeWithSelector(PrivatePool.buy.selector, buys[i].tokenIds, buys[i].tokenWeights, buys[i].proof)
             );
@@ -139,7 +139,7 @@ contract BuyTest is Fixture {
 
         buys.push(
             EthRouter.Buy({
-                privatePool: payable(address(pair)),
+                pool: payable(address(pair)),
                 nft: address(milady),
                 tokenIds: tokenIds,
                 tokenWeights: new uint256[](0),

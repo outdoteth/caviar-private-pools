@@ -9,7 +9,8 @@ contract ConstructorTest is Fixture {
         address privatePoolImplementation = address(0x123);
 
         // act
-        factory = new Factory(privatePoolImplementation);
+        factory = new Factory();
+        factory.setPrivatePoolImplementation(address(privatePoolImplementation));
 
         // assert
         assertEq(

@@ -24,21 +24,20 @@ contract WithdrawTest is Fixture {
     mapping(uint256 => bool) existingTokenIds;
 
     function setUp() public {
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
-            baseToken,
-            nft,
-            virtualBaseTokenReserves,
-            virtualNftReserves,
-            feeRate,
-            merkleRoot,
-            address(stolenNftOracle),
-            owner
+            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, address(stolenNftOracle)
         );
 
         for (uint256 i = 0; i < 5; i++) {
             milady.mint(address(privatePool), i);
         }
+
+        vm.mockCall(
+            address(factory),
+            abi.encodeWithSelector(ERC721.ownerOf.selector, address(privatePool)),
+            abi.encode(address(this))
+        );
     }
 
     function test_EmitsWithdrawEvent() public {
@@ -57,7 +56,7 @@ contract WithdrawTest is Fixture {
 
     function test_TransfersBaseTokensToCaller() public {
         // arrange
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
             address(shibaInu),
             nft,
@@ -65,8 +64,13 @@ contract WithdrawTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
-            owner
+            address(stolenNftOracle)
+        );
+
+        vm.mockCall(
+            address(factory),
+            abi.encodeWithSelector(ERC721.ownerOf.selector, address(privatePool)),
+            abi.encode(address(this))
         );
 
         milady.mint(address(privatePool), 6);

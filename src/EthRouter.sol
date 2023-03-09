@@ -14,7 +14,7 @@ contract EthRouter is ERC721TokenReceiver {
     using SafeTransferLib for address;
 
     struct Buy {
-        address payable privatePool;
+        address payable pool;
         address nft;
         uint256[] tokenIds;
         uint256[] tokenWeights;
@@ -24,7 +24,7 @@ contract EthRouter is ERC721TokenReceiver {
     }
 
     struct Sell {
-        address payable privatePool;
+        address payable pool;
         address nft;
         uint256[] tokenIds;
         uint256[] tokenWeights;
@@ -35,13 +35,13 @@ contract EthRouter is ERC721TokenReceiver {
     }
 
     struct Deposit {
-        address payable privatePool;
+        address payable pool;
         address nft;
         uint256[] tokenIds;
     }
 
     struct Withdraw {
-        address privatePool;
+        address pool;
         address nft;
         uint256[] tokenIds;
         address token;
@@ -49,7 +49,7 @@ contract EthRouter is ERC721TokenReceiver {
     }
 
     struct Change {
-        address payable privatePool;
+        address payable pool;
         address nft;
         uint256[] inputTokenIds;
         uint256[] inputTokenWeights;
@@ -72,6 +72,10 @@ contract EthRouter is ERC721TokenReceiver {
 
     receive() external payable {}
 
+    /// @notice Executes a series of buy operations against public or private pools.
+    /// @param buys The buy operations to execute.
+    /// @param deadline The deadline for the transaction to be mined. Will revert if timestamp is greater than deadline.
+    /// If it's set to 0 then there is no deadline.
     function buy(Buy[] calldata buys, uint256 deadline) public payable {
         // check that the deadline has not passed (if any)
         if (block.timestamp > deadline && deadline != 0) {
@@ -83,12 +87,12 @@ contract EthRouter is ERC721TokenReceiver {
             uint256 netInputAmount;
             if (buys[i].isPublicPool) {
                 // execute the buy against a public pool
-                netInputAmount = Pair(buys[i].privatePool).nftBuy{value: buys[i].baseTokenAmount}(
+                netInputAmount = Pair(buys[i].pool).nftBuy{value: buys[i].baseTokenAmount}(
                     buys[i].tokenIds, buys[i].baseTokenAmount, 0
                 );
             } else {
                 // execute the buy against a private pool
-                (netInputAmount,) = PrivatePool(buys[i].privatePool).buy{value: buys[i].baseTokenAmount}(
+                (netInputAmount,) = PrivatePool(buys[i].pool).buy{value: buys[i].baseTokenAmount}(
                     buys[i].tokenIds, buys[i].tokenWeights, buys[i].proof
                 );
             }
@@ -111,6 +115,11 @@ contract EthRouter is ERC721TokenReceiver {
         }
     }
 
+    /// @notice Executes a series of sell operations against public or private pools.
+    /// @param sells The sell operations to execute.
+    /// @param minOutputAmount The minimum amount of output tokens that must be received for the transaction to succeed.
+    /// @param deadline The deadline for the transaction to be mined. Will revert if timestamp is greater than deadline.
+    /// Set to 0 for there to be no deadline.
     function sell(Sell[] calldata sells, uint256 minOutputAmount, uint256 deadline) public {
         // check that the deadline has not passed (if any)
         if (block.timestamp > deadline && deadline != 0) {
@@ -125,21 +134,23 @@ contract EthRouter is ERC721TokenReceiver {
             }
 
             // approve the pair to transfer NFTs from the router
-            ERC721(sells[i].nft).setApprovalForAll(sells[i].privatePool, true);
+            ERC721(sells[i].nft).setApprovalForAll(sells[i].pool, true);
 
             uint256 netOutputAmount;
             if (sells[i].isPublicPool) {
                 // exceute the sell against a public pool
-                netOutputAmount = Pair(sells[i].privatePool).nftSell(
+                netOutputAmount = Pair(sells[i].pool).nftSell(
                     sells[i].tokenIds,
                     0,
                     0,
                     sells[i].publicPoolProofs,
+                    // ReservoirOracle.Message[] is the exact same as IStolenNftOracle.Message[] and can be
+                    // decoded/encoded 1-to-1.
                     abi.decode(abi.encode(sells[i].stolenNftProofs), (ReservoirOracle.Message[]))
                 );
             } else {
                 // execute the sell against a private pool
-                (netOutputAmount,) = PrivatePool(sells[i].privatePool).sell(
+                (netOutputAmount,) = PrivatePool(sells[i].pool).sell(
                     sells[i].tokenIds, sells[i].tokenWeights, sells[i].proof, sells[i].stolenNftProofs
                 );
             }
@@ -160,6 +171,14 @@ contract EthRouter is ERC721TokenReceiver {
         msg.sender.safeTransferETH(address(this).balance);
     }
 
+    /// @notice Executes a deposit to a private pool (transfers NFTs and ETH to the pool).
+    /// @param privatePool The private pool to deposit to.
+    /// @param nft The NFT contract address.
+    /// @param tokenIds The token IDs of the NFTs to deposit.
+    /// @param minPrice The minimum price of the pool. Will revert if price is smaller than this.
+    /// @param maxPrice The maximum price of the pool. Will revert if price is greater than this.
+    /// @param deadline The deadline for the transaction to be mined. Will revert if timestamp is greater than deadline.
+    /// Set to 0 for deadline to be ignored.
     function deposit(
         address payable privatePool,
         address nft,
@@ -191,6 +210,10 @@ contract EthRouter is ERC721TokenReceiver {
         PrivatePool(privatePool).deposit{value: msg.value}(tokenIds, msg.value);
     }
 
+    /// @notice Executes a series of change operations against a private pool.
+    /// @param changes The change operations to execute.
+    /// @param deadline The deadline for the transaction to be mined. Will revert if timestamp is greater than deadline.
+    /// Set to 0 for deadline to be ignored.
     function change(Change[] calldata changes, uint256 deadline) public payable {
         // check deadline has not passed (if any)
         if (block.timestamp > deadline && deadline != 0) {
@@ -207,10 +230,10 @@ contract EthRouter is ERC721TokenReceiver {
             }
 
             // approve pair to transfer NFTs from router
-            ERC721(_change.nft).setApprovalForAll(_change.privatePool, true);
+            ERC721(_change.nft).setApprovalForAll(_change.pool, true);
 
             // execute change
-            PrivatePool(_change.privatePool).change{value: msg.value}(
+            PrivatePool(_change.pool).change{value: msg.value}(
                 _change.inputTokenIds,
                 _change.inputTokenWeights,
                 _change.inputProof,
@@ -231,6 +254,13 @@ contract EthRouter is ERC721TokenReceiver {
         }
     }
 
+    /// @notice Pays royalties to the royalty recipient for a given NFT and sale price. Looks up the royalty info from
+    /// the manifold registry.
+    /// @param tokenAddress The address of the NFT contract.
+    /// @param tokenId The token ID of the NFT.
+    /// @param salePrice The sale price of the NFT.
+    /// @return royaltyFee The royalty fee to pay.
+    /// @return recipient The address to pay the royalty fee to.
     function _payRoyalty(address tokenAddress, uint256 tokenId, uint256 salePrice)
         internal
         returns (uint256 royaltyFee, address recipient)

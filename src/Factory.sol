@@ -4,30 +4,27 @@ pragma solidity ^0.8.19;
 import {LibClone} from "solady/utils/LibClone.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
+import {Owned} from "solmate/auth/Owned.sol";
+import {Strings} from "openzeppelin/utils/Strings.sol";
 
 import {PrivatePool} from "./PrivatePool.sol";
+import {PrivatePoolMetadata} from "./PrivatePoolMetadata.sol";
 
-contract Factory {
+contract Factory is ERC721, Owned {
     using LibClone for address;
 
-    /// @notice Emitted when a private pool is created.
-    /// @param privatePool The address of the private pool.
-    /// @param tokenIds The token ids that were deposited to the private pool.
-    /// @param baseTokenAmount The amount of base tokens that were deposited to the private pool.
     event Create(address indexed privatePool, uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
 
     /// @notice The address of the private pool implementation that proxies point to.
-    address public immutable privatePoolImplementation;
+    address public privatePoolImplementation;
 
-    /// @notice The constructor initializes the private pool implementation.
-    /// @param _privatePoolImplementation The address of the private pool implementation.
-    constructor(address _privatePoolImplementation) {
-        privatePoolImplementation = _privatePoolImplementation;
-    }
+    /// @notice Helper contract that constructs the private pool metadata svg and json for each pool NFT.
+    address public privatePoolMetadata;
 
-    /// @notice Creates a new private pool using the minimal proxy pattern that points to the
-    ///         private pool implementation. The caller must approve the factory to transfer
-    ///         the NFTs that will be deposited to the pool.
+    constructor() ERC721("Caviar Private Pools", "POOL") Owned(msg.sender) {}
+
+    /// @notice Creates a new private pool using the minimal proxy pattern that points to the private pool
+    /// implementation. The caller must approve the factory to transfer the NFTs that will be deposited to the pool.
     /// @param _baseToken The address of the base token.
     /// @param _nft The address of the NFT.
     /// @param _virtualBaseTokenReserves The virtual base token reserves.
@@ -51,8 +48,8 @@ contract Factory {
         uint256[] calldata tokenIds,
         uint256 baseTokenAmount
     ) public payable returns (PrivatePool privatePool) {
-        // check that the msg.value is equal to the base token amount if the base token is ETH
-        // or the msg.value is equal to zero if the base token is not ETH
+        // check that the msg.value is equal to the base token amount if the base token is ETH or the msg.value is equal
+        // to zero if the base token is not ETH
         if ((_baseToken == address(0) && msg.value != baseTokenAmount) || (_baseToken != address(0) && msg.value > 0)) {
             revert PrivatePool.InvalidEthAmount();
         }
@@ -60,16 +57,12 @@ contract Factory {
         // deploy a minimal proxy clone of the private pool implementation
         privatePool = PrivatePool(payable(privatePoolImplementation.cloneDeterministic(_salt)));
 
+        // mint the nft to the caller
+        _safeMint(msg.sender, uint256(uint160(address(privatePool))));
+
         // initialize the pool
         privatePool.initialize(
-            _baseToken,
-            _nft,
-            _virtualBaseTokenReserves,
-            _virtualNftReserves,
-            _feeRate,
-            _merkleRoot,
-            _stolenNftOracle,
-            msg.sender // set the owner to be the caller
+            _baseToken, _nft, _virtualBaseTokenReserves, _virtualNftReserves, _feeRate, _merkleRoot, _stolenNftOracle
         );
 
         if (_baseToken == address(0)) {
@@ -99,5 +92,24 @@ contract Factory {
         returns (address predictedAddress)
     {
         predictedAddress = privatePoolImplementation.predictDeterministicAddress(salt, deployer);
+    }
+
+    /// @notice Sets private pool metadata contract.
+    /// @param _privatePoolMetadata The private pool metadata contract.
+    function setPrivatePoolMetadata(address _privatePoolMetadata) public onlyOwner {
+        privatePoolMetadata = _privatePoolMetadata;
+    }
+
+    /// @notice Sets the private pool implementation contract that newly deployed proxies point to.
+    /// @param _privatePoolImplementation The private pool implementation contract.
+    function setPrivatePoolImplementation(address _privatePoolImplementation) public onlyOwner {
+        privatePoolImplementation = _privatePoolImplementation;
+    }
+
+    /// @notice Returns the token URI for a given token id.
+    /// @param id The token id.
+    /// @return uri The token URI.
+    function tokenURI(uint256 id) public view override returns (string memory) {
+        return PrivatePoolMetadata(privatePoolMetadata).tokenURI(id);
     }
 }

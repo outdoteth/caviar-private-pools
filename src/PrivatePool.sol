@@ -9,32 +9,21 @@ import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 
 contract PrivatePool is ERC721TokenReceiver {
+    /// @notice Merkle proof input for a sparse merkle multi proof. It can be generated with a library like:
+    /// https://github.com/OpenZeppelin/merkle-tree#treegetmultiproof
     struct MerkleMultiProof {
         bytes32[] proof;
         bool[] flags;
     }
 
-    event OwnershipTransferred(address indexed user, address indexed newOwner);
-    event Initialize(
-        address indexed baseToken,
-        address indexed nft,
-        uint128 virtualBaseTokenReserves,
-        uint128 virtualNftReserves,
-        uint16 feeRate,
-        bytes32 merkleRoot,
-        address stolenNftOracle
-    );
+    // forgefmt: disable-next-item
+    event Initialize(address indexed baseToken, address indexed nft, uint128 virtualBaseTokenReserves, uint128 virtualNftReserves, uint16 feeRate, bytes32 merkleRoot, address stolenNftOracle);
     event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount);
     event Sell(uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount);
     event Deposit(uint256[] tokenIds, uint256 baseTokenAmount);
     event Withdraw(address indexed nft, uint256[] tokenIds, address token, uint256 amount);
-    event Change(
-        uint256[] inputTokenIds,
-        uint256[] inputTokenWeights,
-        uint256[] outputTokenIds,
-        uint256[] outputTokenWeights,
-        uint256 feeAmount
-    );
+    // forgefmt: disable-next-item
+    event Change(uint256[] inputTokenIds, uint256[] inputTokenWeights, uint256[] outputTokenIds, uint256[] outputTokenWeights, uint256 feeAmount);
     event SetVirtualReserves(uint128 virtualBaseTokenReserves, uint128 virtualNftReserves);
     event SetMerkleRoot(bytes32 merkleRoot);
     event SetFeeRate(uint16 feeRate);
@@ -49,30 +38,50 @@ contract PrivatePool is ERC721TokenReceiver {
 
     address public baseToken;
     address public nft;
+
+    /// @notice The fee rate (in basis points) 2_000 = 2%
     uint16 public feeRate;
+
+    /// @notice Whether or not the pool has been initialized.
     bool public initialized;
+
+    /// @notice The virtual base token reserves used in the xy=k invariant. Changing this will change the liquidity
+    /// depth and price of the pool.
     uint128 public virtualBaseTokenReserves;
 
-    /// @dev The virtual NFT reserves that a user sets. If it's desired to set the
-    ///      reserves to match 16 NFTs then the virtual reserves should be set to 16e18.
-    ///      If weights are enabled by setting the merkle root to be non-zero then the
-    ///      virtual reserves should be set to the sum of the weights of the NFTs; where
-    ///      floor NFTs all have a weight of 1. A rarer NFT may have a weight of 2.3 if
-    ///      it's 2.3x more valuable than a floor.
+    /// @notice The virtual nft reserves used in the xy=k invariant. Changing this will change the liquidity
+    /// depth and price of the pool.
+    /// @dev The virtual NFT reserves that a user sets. If it's desired to set the reserves to match 16 NFTs then the
+    /// virtual reserves should be set to 16e18. If weights are enabled by setting the merkle root to be non-zero then
+    /// the virtual reserves should be set to the sum of the weights of the NFTs; where floor NFTs all have a weight of
+    /// 1e18. A rarer NFT may have a weight of 2.3e18 if it's 2.3x more valuable than a floor.
     uint128 public virtualNftReserves;
+
+    /// @notice The merkle root of all the token weights in the pool. If the merkle root is set to bytes32(0) then all
+    /// NFTs are set to have a weight of 1e18.
     bytes32 public merkleRoot;
+
+    /// @notice The NFT oracle to check if an NFT is stolen. If it's set to be address(0) then the stolen NFT check is
+    /// skipped.
     address public stolenNftOracle;
-    address public owner;
+
+    /// @notice The factory contract that created this pool.
+    address public immutable factory;
 
     modifier onlyOwner() virtual {
-        if (msg.sender != owner) revert Unauthorized();
+        if (msg.sender != ERC721(factory).ownerOf(uint160(address(this)))) {
+            revert Unauthorized();
+        }
         _;
     }
 
     receive() external payable {}
 
-    /// @notice Initializes the private pool and sets the initial parameters.
-    ///         Should only be called once by the factory.
+    constructor(address _factory) {
+        factory = _factory;
+    }
+
+    /// @notice Initializes the private pool and sets the initial parameters. Should only be called once by the factory.
     /// @param _baseToken The address of the base token
     /// @param _nft The address of the NFT
     /// @param _virtualBaseTokenReserves The virtual base token reserves
@@ -80,7 +89,6 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param _feeRate The fee rate (in basis points) 2_000 = 2%
     /// @param _merkleRoot The merkle root
     /// @param _stolenNftOracle The address of the stolen NFT oracle
-    /// @param _owner The address of the owner
     function initialize(
         address _baseToken,
         address _nft,
@@ -88,13 +96,13 @@ contract PrivatePool is ERC721TokenReceiver {
         uint128 _virtualNftReserves,
         uint16 _feeRate,
         bytes32 _merkleRoot,
-        address _stolenNftOracle,
-        address _owner
+        address _stolenNftOracle
     ) public {
         // prevent duplicate initialization
         if (initialized) revert AlreadyInitialized();
 
-        // TODO: Add fee rate check is within bounds
+        // check that the fee rate is less than 50%
+        if (_feeRate >= 5_000) revert FeeRateTooHigh();
 
         // set the state variables
         baseToken = _baseToken;
@@ -104,21 +112,21 @@ contract PrivatePool is ERC721TokenReceiver {
         feeRate = _feeRate;
         merkleRoot = _merkleRoot;
         stolenNftOracle = _stolenNftOracle;
-        owner = _owner;
+        // factory = _factory;
 
         // mark the pool as initialized
         initialized = true;
 
         // emit the events
-        emit OwnershipTransferred(address(0), _owner);
         emit Initialize(
             _baseToken, _nft, _virtualBaseTokenReserves, _virtualNftReserves, _feeRate, _merkleRoot, _stolenNftOracle
         );
     }
 
-    /// @notice Buys NFTs from the pool, paying with base tokens from the caller.
-    ///         Then transfers the bought NFTs to the caller. The net cost depends
-    ///         on the current price, fee rate and assigned NFT weights.
+    /// @notice Buys NFTs from the pool, paying with base tokens from the caller. Then transfers the bought NFTs to the
+    /// caller. The net cost depends on the current price, fee rate and assigned NFT weights.
+    /// @dev DO NOT call this function directly unless you know what you are doing. Instead, use a wrapper contract that
+    /// will check the max input amount and revert if the slippage is too high.
     /// @param tokenIds The token IDs of the NFTs to buy.
     /// @param tokenWeights The weights of the NFTs to buy.
     /// @param proof The merkle proof for the weights of each NFT to buy.
@@ -137,8 +145,8 @@ contract PrivatePool is ERC721TokenReceiver {
         // calculate the required net input amount and fee amount
         (netInputAmount, feeAmount) = buyQuote(weightSum);
 
-        // ensure the caller sent enough ETH if the base token is ETH
-        // or that the caller sent 0 ETH if the base token is not ETH
+        // ensure the caller sent enough ETH if the base token is ETH or that the caller sent 0 ETH if the base token is
+        // not ETH
         if ((msg.value < netInputAmount && baseToken == address(0)) || (baseToken != address(0) && msg.value > 0)) {
             revert InvalidEthAmount();
         }
@@ -170,9 +178,10 @@ contract PrivatePool is ERC721TokenReceiver {
         emit Buy(tokenIds, tokenWeights, netInputAmount, feeAmount);
     }
 
-    /// @notice Sells NFTs into the pool and transfers base tokens to the caller. NFTs
-    ///         are transferred from the caller to the pool. The net proceeds depend on
-    ///         the current price, fee rate and assigned NFT weights.
+    /// @notice Sells NFTs into the pool and transfers base tokens to the caller. NFTs are transferred from the caller
+    /// to the pool. The net sale amount depends on the current price, fee rate and assigned NFT weights.
+    /// @dev DO NOT call this function directly unless you know what you are doing. Instead, use a wrapper contract that
+    /// will check the min output amount and revert if the slippage is too high.
     /// @param tokenIds The token IDs of the NFTs to sell.
     /// @param tokenWeights The weights of the NFTs to sell.
     /// @param proof The merkle proof for the weights of each NFT to sell.
@@ -211,8 +220,8 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
         }
 
-        // transfer eth to the caller if the base token is ETH or transfer
-        // the base token to the caller if the base token is not ETH
+        // transfer eth to the caller if the base token is ETH or transfer the base token to the caller if the base
+        // token is not ETH
         if (baseToken == address(0)) {
             payable(msg.sender).transfer(netOutputAmount);
         } else {
@@ -223,15 +232,15 @@ contract PrivatePool is ERC721TokenReceiver {
         emit Sell(tokenIds, tokenWeights, netOutputAmount, feeAmount);
     }
 
-    /// @notice Deposits base tokens and NFTs into the pool. The caller must approve
-    ///         the pool to transfer the NFTs and base tokens.
+    /// @notice Deposits base tokens and NFTs into the pool. The caller must approve the pool to transfer their NFTs and
+    /// base tokens.
     /// @param tokenIds The token IDs of the NFTs to deposit.
     /// @param baseTokenAmount The amount of base tokens to deposit.
     function deposit(uint256[] calldata tokenIds, uint256 baseTokenAmount) public payable {
         // ~~~ Checks ~~~ //
 
-        // ensure the caller sent a valid amount of ETH if base token is ETH
-        // or that the caller sent 0 ETH if base token is not ETH
+        // ensure the caller sent a valid amount of ETH if base token is ETH or that the caller sent 0 ETH if base token
+        // is not ETH
         if ((baseToken == address(0) && msg.value != baseTokenAmount) || (msg.value > 0 && baseToken != address(0))) {
             revert InvalidEthAmount();
         }
@@ -277,13 +286,11 @@ contract PrivatePool is ERC721TokenReceiver {
         emit Withdraw(_nft, tokenIds, token, tokenAmount);
     }
 
-    /// @notice Changes a set of NFTs that the caller owns for another set of NFTs in the pool.
-    ///         The caller must approve the pool to transfer the NFTs. The sum of the caller's
-    ///         NFT weights must be less than or equal to the sum of the output pool NFTs weights.
-    ///         The caller must also pay a fee depending on the current price and net input weight.
-    /// @dev   DO NOT call this function directly unless you are sure. The price can be manipulated
-    ///        to increase the fee. Instead use a wrapper contract to validate the max fee amount and
-    ///        revert if the fee is too large.
+    /// @notice Changes a set of NFTs that the caller owns for another set of NFTs in the pool. The caller must approve
+    /// the pool to transfer the NFTs. The sum of the caller's NFT weights must be less than or equal to the sum of the
+    /// output pool NFTs weights. The caller must also pay a fee depending on the current price and net input weight.
+    /// @dev   DO NOT call this function directly unless you are sure. The price can be manipulated to increase the fee.
+    /// Instead, use a wrapper contract to validate the max fee amount and revert if the fee is too large.
     /// @param inputTokenIds The token IDs of the NFTs to change.
     /// @param inputTokenWeights The weights of the NFTs to change.
     /// @param inputProof The merkle proof for the weights of each NFT to change.
@@ -317,8 +324,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // ~~~ Interactions ~~~ //
 
-        // check caller sent enough ETH if base token is ETH
-        // or that the caller sent 0 ETH if base token is not ETH
+        // check caller sent enough ETH if base token is ETH or that the caller sent 0 ETH if base token is not ETH
         if ((baseToken == address(0) && msg.value < feeAmount) || (baseToken != address(0) && msg.value > 0)) {
             revert InvalidEthAmount();
         }
@@ -347,8 +353,8 @@ contract PrivatePool is ERC721TokenReceiver {
         emit Change(inputTokenIds, inputTokenWeights, outputTokenIds, outputTokenWeights, feeAmount);
     }
 
-    /// @notice Executes a transaction from the pool account to a target contrat. The caller
-    ///         must be the owner of the pool. This allows for use cases such as claiming airdrops.
+    /// @notice Executes a transaction from the pool account to a target contract. The caller must be the owner of the
+    /// pool. This allows for use cases such as claiming airdrops.
     /// @param target The address of the target contract.
     /// @param data The data to send to the target contract.
     /// @return returnData The return data of the transaction.
@@ -371,9 +377,8 @@ contract PrivatePool is ERC721TokenReceiver {
         }
     }
 
-    /// @notice Sets the virtual base token reserves and virtual NFT reserves. Can only be called
-    ///         by the owner of the pool. These parameters affect the price and liquidity depth
-    ///         of the pool.
+    /// @notice Sets the virtual base token reserves and virtual NFT reserves. Can only be called by the owner of the
+    /// pool. These parameters affect the price and liquidity depth of the pool.
     /// @param newVirtualBaseTokenReserves The new virtual base token reserves.
     /// @param newVirtualNftReserves The new virtual NFT reserves.
     function setVirtualReserves(uint128 newVirtualBaseTokenReserves, uint128 newVirtualNftReserves) public onlyOwner {
@@ -385,8 +390,8 @@ contract PrivatePool is ERC721TokenReceiver {
         emit SetVirtualReserves(newVirtualBaseTokenReserves, newVirtualNftReserves);
     }
 
-    /// @notice Sets the merkle root. Can only be called by the owner of the pool.
-    ///         The merkle root is used to validate the NFT weights.
+    /// @notice Sets the merkle root. Can only be called by the owner of the pool. The merkle root is used to validate
+    /// the NFT weights.
     /// @param newMerkleRoot The new merkle root.
     function setMerkleRoot(bytes32 newMerkleRoot) public onlyOwner {
         // set the merkle root
@@ -396,10 +401,10 @@ contract PrivatePool is ERC721TokenReceiver {
         emit SetMerkleRoot(newMerkleRoot);
     }
 
-    /// @notice Sets the fee rate. Can only be called by the owner of the pool. The fee
-    ///         rate is used to calculate the fee amount when swapping or changing NFTs.
-    ///         The fee rate is in basis points (1/100th of a percent) - 10_000 == 100%;
-    /// @param newFeeRate The new fee rate (in basis points) 2_000 = 2%
+    /// @notice Sets the fee rate. Can only be called by the owner of the pool. The fee rate is used to calculate the
+    /// fee amount when swapping or changing NFTs. The fee rate is in basis points (1/100th of a percent). For example,
+    /// 10_000 == 100%, 200 == 2%, 1 == 0.01%.
+    /// @param newFeeRate The new fee rate (in basis points)
     function setFeeRate(uint16 newFeeRate) public onlyOwner {
         // check that the fee rate is less than 50%
         if (newFeeRate >= 5_000) revert FeeRateTooHigh();
@@ -411,9 +416,8 @@ contract PrivatePool is ERC721TokenReceiver {
         emit SetFeeRate(newFeeRate);
     }
 
-    /// @notice Sets the stolen NFT oracle. Can only be called by the owner of the pool.
-    ///         The stolen NFT oracle is used to check if an NFT is stolen. If it's set
-    ///         to the zero address then no stolen NFT checks are performed.
+    /// @notice Sets the stolen NFT oracle. Can only be called by the owner of the pool. The stolen NFT oracle is used
+    /// to check if an NFT is stolen. If it's set to the zero address then no stolen NFT checks are performed.
     /// @param newStolenNftOracle The new stolen NFT oracle.
     function setStolenNftOracle(address newStolenNftOracle) public onlyOwner {
         // set the stolen NFT oracle
@@ -423,19 +427,8 @@ contract PrivatePool is ERC721TokenReceiver {
         emit SetStolenNftOracle(newStolenNftOracle);
     }
 
-    /// @notice Transfers ownership of the pool to a new owner. Can only be called by the
-    ///         current owner of the pool.
-    /// @param newOwner The address of the new owner.
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        // set the new owner
-        owner = newOwner;
-
-        // emit the ownership transferred event
-        emit OwnershipTransferred(msg.sender, newOwner);
-    }
-
-    /// @notice Returns the required input of buying a given amount of NFTs (in 1e18) inclusive of
-    ///         the fee which is dependent on the currently set fee rate.
+    /// @notice Returns the required input of buying a given amount of NFTs inclusive of the fee which is dependent on
+    /// the currently set fee rate.
     /// @param outputAmount The amount of NFTs to buy multiplied by 1e18.
     /// @return netInputAmount The required input amount of base tokens inclusive of the fee.
     /// @return feeAmount The fee amount.
@@ -448,9 +441,9 @@ contract PrivatePool is ERC721TokenReceiver {
         netInputAmount = inputAmount + feeAmount;
     }
 
-    /// @notice Returns the output amount of selling a given amount of NFTs (in 1e18) inclusive of
-    ///         the fee which is dependent on the currently set fee rate.
-    /// @param inputAmount The amount of NFTs to buy multiplied by 1e18.
+    /// @notice Returns the output amount of selling a given amount of NFTs inclusive of the fee which is dependent on
+    /// the currently set fee rate.
+    /// @param inputAmount The amount of NFTs to sell multiplied by 1e18.
     /// @return netOutputAmount The output amount of base tokens inclusive of the fee.
     /// @return feeAmount The fee amount.
     function sellQuote(uint256 inputAmount) public view returns (uint256 netOutputAmount, uint256 feeAmount) {
@@ -461,8 +454,8 @@ contract PrivatePool is ERC721TokenReceiver {
         netOutputAmount = outputAmount - feeAmount;
     }
 
-    /// @notice Returns the fee required to change a given amount of NFTs (in 1e18). The fee is
-    ///         based on the current price in the pool and the currently set fee rate.
+    /// @notice Returns the fee required to change a given amount of NFTs. The fee is based on the current price in the
+    /// pool and the currently set fee rate.
     /// @param inputAmount The amount of NFTs to change multiplied by 1e18.
     /// @return feeAmount The fee amount.
     function changeFeeQuote(uint256 inputAmount) public view returns (uint256 feeAmount) {
@@ -477,8 +470,7 @@ contract PrivatePool is ERC721TokenReceiver {
         return (virtualBaseTokenReserves * 10 ** exponent) / virtualNftReserves;
     }
 
-    /// @notice Sums the weights of each NFT and validates that the weights are correct
-    ///         by verifying the merkle proof.
+    /// @notice Sums the weights of each NFT and validates that the weights are correct by verifying the merkle proof.
     /// @param tokenIds The token IDs of the NFTs to sum the weights for.
     /// @param tokenWeights The weights of each NFT in the token IDs array.
     /// @param proof The merkle proof for the weights of each NFT.

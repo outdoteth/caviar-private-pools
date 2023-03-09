@@ -8,16 +8,21 @@ contract SettersTest is Fixture {
     event SetMerkleRoot(bytes32 merkleRoot);
     event SetFeeRate(uint16 feeRate);
     event SetStolenNftOracle(address stolenNftOracle);
-    event OwnershipTransferred(address indexed user, address indexed newOwner);
 
     PrivatePool public privatePool;
 
     address owner = address(this);
 
     function setUp() public {
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
-            address(shibaInu), address(0), 100, 200, 300, bytes32(abi.encode(0xaaa)), address(stolenNftOracle), owner
+            address(shibaInu), address(0), 100, 200, 300, bytes32(abi.encode(0xaaa)), address(stolenNftOracle)
+        );
+
+        vm.mockCall(
+            address(factory),
+            abi.encodeWithSelector(ERC721.ownerOf.selector, address(privatePool)),
+            abi.encode(address(this))
         );
     }
 
@@ -137,33 +142,5 @@ contract SettersTest is Fixture {
         vm.prank(address(0xbabe));
         vm.expectRevert(PrivatePool.Unauthorized.selector);
         privatePool.setStolenNftOracle(address(0xdeadbeef));
-    }
-
-    function test_transferOwnership_EmitsOwnershipTransferredEvent() public {
-        // arrange
-        address newOwner = address(0xdeadbeef);
-
-        // act
-        vm.expectEmit(true, true, true, true);
-        emit OwnershipTransferred(owner, newOwner);
-        privatePool.transferOwnership(newOwner);
-    }
-
-    function test_transferOwnership_SetsNewOwner() public {
-        // arrange
-        address newOwner = address(0xdeadbeef);
-
-        // act
-        privatePool.transferOwnership(newOwner);
-
-        // assert
-        assertEq(privatePool.owner(), newOwner, "Should have set new owner");
-    }
-
-    function test_transferOwnership_RevertIf_NotOwner() public {
-        // act
-        vm.prank(address(0xbabe));
-        vm.expectRevert(PrivatePool.Unauthorized.selector);
-        privatePool.transferOwnership(address(0xdeadbeef));
     }
 }

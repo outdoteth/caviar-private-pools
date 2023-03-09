@@ -4,13 +4,11 @@ pragma solidity ^0.8.19;
 import "../Fixture.sol";
 
 contract ChangeTest is Fixture {
-    PrivatePool public privatePool = new PrivatePool();
+    PrivatePool public privatePool = new PrivatePool(address(factory));
     EthRouter.Change[] public changes;
 
     function setUp() public {
-        privatePool.initialize(
-            address(0), address(milady), 10e18, 10e18, 0, bytes32(0), address(stolenNftOracle), address(this)
-        );
+        privatePool.initialize(address(0), address(milady), 10e18, 10e18, 0, bytes32(0), address(stolenNftOracle));
 
         for (uint256 i = 0; i < 5; i++) {
             milady.mint(address(privatePool), i);
@@ -36,7 +34,7 @@ contract ChangeTest is Fixture {
 
         changes.push(
             EthRouter.Change({
-                privatePool: payable(address(privatePool)),
+                pool: payable(address(privatePool)),
                 nft: address(milady),
                 inputTokenIds: inputTokenIds,
                 inputTokenWeights: inputTokenWeights,
@@ -70,7 +68,7 @@ contract ChangeTest is Fixture {
 
         changes.push(
             EthRouter.Change({
-                privatePool: payable(address(privatePool)),
+                pool: payable(address(privatePool)),
                 nft: address(milady),
                 inputTokenIds: inputTokenIds,
                 inputTokenWeights: inputTokenWeights,
@@ -109,7 +107,7 @@ contract ChangeTest is Fixture {
 
         changes.push(
             EthRouter.Change({
-                privatePool: payable(address(privatePool)),
+                pool: payable(address(privatePool)),
                 nft: address(milady),
                 inputTokenIds: inputTokenIds,
                 inputTokenWeights: inputTokenWeights,

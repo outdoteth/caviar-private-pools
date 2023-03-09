@@ -7,18 +7,19 @@ contract CreateTest is Fixture {
     event Create(address indexed privatePool, uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
 
     address baseToken = address(0);
-    address nft = address(0);
+    address nft = address(milady);
     uint128 virtualBaseTokenReserves = 100;
     uint128 virtualNftReserves = 200;
     uint16 feeRate = 10;
     bytes32 merkleRoot = bytes32(0);
     bytes32 salt = bytes32(0);
     uint256[] tokenIds;
-    uint256 baseTokenAmount;
+    uint256 baseTokenAmount = 20;
 
     function setUp() public {
-        privatePoolImplementation = new PrivatePool();
-        factory = new Factory(address(privatePoolImplementation));
+        privatePoolImplementation = new PrivatePool(address(factory));
+        factory = new Factory();
+        factory.setPrivatePoolImplementation(address(privatePoolImplementation));
 
         for (uint256 i = 0; i < 10; i++) {
             milady.mint(address(this), i);
@@ -34,7 +35,7 @@ contract CreateTest is Fixture {
         // act
         vm.expectEmit(true, true, true, true);
         emit Create(predictedAddress, tokenIds, baseTokenAmount);
-        factory.create(
+        factory.create{value: baseTokenAmount}(
             baseToken,
             nft,
             virtualBaseTokenReserves,
@@ -55,7 +56,7 @@ contract CreateTest is Fixture {
         tokenIds.push(3);
 
         // act
-        PrivatePool privatePool = factory.create(
+        PrivatePool privatePool = factory.create{value: baseTokenAmount}(
             baseToken,
             address(milady),
             virtualBaseTokenReserves,
@@ -124,6 +125,34 @@ contract CreateTest is Fixture {
         // assert
         assertEq(
             shibaInu.balanceOf(address(privatePool)), baseTokenAmount, "Should have transferred 3.156 SHIB to the pool"
+        );
+    }
+
+    function test_MintsNftToCaller() public {
+        // arrange
+        tokenIds.push(1);
+        tokenIds.push(2);
+        tokenIds.push(3);
+
+        // act
+        PrivatePool privatePool = factory.create{value: baseTokenAmount}(
+            baseToken,
+            address(milady),
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            salt,
+            tokenIds,
+            baseTokenAmount
+        );
+
+        // assert
+        assertEq(
+            factory.ownerOf(uint256(uint160(address(privatePool)))),
+            address(this),
+            "Should have minted NFT to the caller"
         );
     }
 

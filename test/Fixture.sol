@@ -16,6 +16,7 @@ import "./shared/Airdrop.sol";
 import "../src/Factory.sol";
 import "../src/PrivatePool.sol";
 import "../src/EthRouter.sol";
+import "../src/PrivatePoolMetadata.sol";
 
 contract Fixture is Test, ERC721TokenReceiver {
     using stdStorage for StdStorage;
@@ -27,10 +28,14 @@ contract Fixture is Test, ERC721TokenReceiver {
     RoyaltyRegistry public royaltyRegistry = new RoyaltyRegistry(address(0));
     EthRouter public ethRouter = new EthRouter(royaltyRegistry);
     Caviar public caviar = new Caviar(address(stolenNftOracle));
-    PrivatePool public privatePoolImplementation = new PrivatePool();
-    Factory public factory = new Factory(address(privatePoolImplementation));
+    Factory public factory = new Factory();
+    PrivatePool public privatePoolImplementation = new PrivatePool(address(factory));
+    PrivatePoolMetadata public privatePoolMetadata = new PrivatePoolMetadata();
 
-    constructor() {}
+    constructor() {
+        factory.setPrivatePoolImplementation(address(privatePoolImplementation));
+        factory.setPrivatePoolMetadata(address(privatePoolMetadata));
+    }
 
     receive() external payable {}
 

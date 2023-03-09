@@ -9,8 +9,14 @@ contract ExecuteTest is Fixture {
     address owner = address(this);
 
     function setUp() public {
-        privatePool = new PrivatePool();
-        privatePool.initialize(address(0), address(0), 0, 0, 0, bytes32(0), address(stolenNftOracle), owner);
+        privatePool = new PrivatePool(address(factory));
+        privatePool.initialize(address(0), address(0), 0, 0, 0, bytes32(0), address(stolenNftOracle));
+
+        vm.mockCall(
+            address(factory),
+            abi.encodeWithSelector(ERC721.ownerOf.selector, address(privatePool)),
+            abi.encode(address(this))
+        );
     }
 
     function test_RevertIf_NotOwner() public {

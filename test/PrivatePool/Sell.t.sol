@@ -24,16 +24,9 @@ contract SellTest is Fixture {
     PrivatePool.MerkleMultiProof proofs;
 
     function setUp() public {
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
-            baseToken,
-            nft,
-            virtualBaseTokenReserves,
-            virtualNftReserves,
-            feeRate,
-            merkleRoot,
-            address(stolenNftOracle),
-            owner
+            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, address(stolenNftOracle)
         );
 
         deal(address(privatePool), virtualBaseTokenReserves);
@@ -76,7 +69,7 @@ contract SellTest is Fixture {
 
     function test_TransfersBaseTokenToCaller() public {
         // arrange
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
             address(shibaInu),
             nft,
@@ -84,8 +77,7 @@ contract SellTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
-            owner
+            address(stolenNftOracle)
         );
 
         deal(address(shibaInu), address(privatePool), virtualBaseTokenReserves);
@@ -185,7 +177,7 @@ contract SellTest is Fixture {
 
     function test_SumsWeightsIfMerkleRootIsSet() public {
         // arrange
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
             baseToken,
             nft,
@@ -193,8 +185,7 @@ contract SellTest is Fixture {
             virtualNftReserves,
             feeRate,
             generateMerkleRoot(),
-            address(stolenNftOracle),
-            owner
+            address(stolenNftOracle)
         );
 
         deal(address(privatePool), virtualBaseTokenReserves);
@@ -217,7 +208,7 @@ contract SellTest is Fixture {
 
     function test_RevertIf_InvalidMerkleProof() public {
         // arrange
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
             baseToken,
             nft,
@@ -225,8 +216,7 @@ contract SellTest is Fixture {
             virtualNftReserves,
             feeRate,
             generateMerkleRoot(),
-            address(stolenNftOracle),
-            owner
+            address(stolenNftOracle)
         );
 
         deal(address(privatePool), virtualBaseTokenReserves);

@@ -37,7 +37,7 @@ contract SellTest is Fixture {
 
         bytes32[][] memory publicPoolProofs = new bytes32[][](0);
         EthRouter.Sell memory sell = EthRouter.Sell({
-            privatePool: payable(address(privatePool)),
+            pool: payable(address(privatePool)),
             nft: address(milady),
             tokenIds: tokenIds,
             tokenWeights: new uint256[](0),
@@ -121,7 +121,7 @@ contract SellTest is Fixture {
         // act
         for (uint256 i = 0; i < sells.length; i++) {
             vm.expectCall(
-                sells[i].privatePool,
+                sells[i].pool,
                 0,
                 abi.encodeWithSelector(
                     PrivatePool.sell.selector,
@@ -147,9 +147,7 @@ contract SellTest is Fixture {
         // act
         for (uint256 i = 0; i < sells.length; i++) {
             vm.expectCall(
-                address(milady),
-                0,
-                abi.encodeWithSelector(ERC721.setApprovalForAll.selector, sells[i].privatePool, true)
+                address(milady), 0, abi.encodeWithSelector(ERC721.setApprovalForAll.selector, sells[i].pool, true)
             );
         }
         ethRouter.sell(sells, minOutputAmount, 0);
@@ -183,7 +181,7 @@ contract SellTest is Fixture {
             milady.mint(address(this), i + totalTokens);
         }
         sells[2] = EthRouter.Sell({
-            privatePool: payable(address(pair)),
+            pool: payable(address(pair)),
             nft: address(milady),
             tokenIds: tokenIds,
             tokenWeights: new uint256[](0),

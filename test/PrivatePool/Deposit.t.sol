@@ -24,16 +24,9 @@ contract DepositTest is Fixture {
     mapping(uint256 => bool) existingTokenIds;
 
     function setUp() public {
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
-            baseToken,
-            nft,
-            virtualBaseTokenReserves,
-            virtualNftReserves,
-            feeRate,
-            merkleRoot,
-            address(stolenNftOracle),
-            owner
+            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, address(stolenNftOracle)
         );
 
         for (uint256 i = 0; i < 5; i++) {
@@ -66,7 +59,7 @@ contract DepositTest is Fixture {
 
     function test_TransfersBaseTokensFromCaller() public {
         // arrange
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
             address(shibaInu),
             nft,
@@ -74,8 +67,7 @@ contract DepositTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
-            owner
+            address(stolenNftOracle)
         );
         uint256 baseTokenAmount = 3.156e18;
         deal(address(shibaInu), address(this), baseTokenAmount);
@@ -117,7 +109,7 @@ contract DepositTest is Fixture {
 
     function test_RevertIf_BaseTokenIsNotEthAndValueIsGreaterThanZero() public {
         // arrange
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
             address(shibaInu),
             nft,
@@ -125,8 +117,7 @@ contract DepositTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
-            owner
+            address(stolenNftOracle)
         );
         uint256 baseTokenAmount = 1e18;
 

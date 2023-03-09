@@ -2,5 +2,9 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
+gas_reports = ["Factory", "EthRouter", "PrivatePool"]
+
+[fmt]
+wrap_comments = true
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

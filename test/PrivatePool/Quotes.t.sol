@@ -21,16 +21,15 @@ contract QuotesTest is Fixture {
     PrivatePool.MerkleMultiProof proofs;
 
     function setUp() public {
-        privatePool = new PrivatePool();
+        privatePool = new PrivatePool(address(factory));
         privatePool.initialize(
-            baseToken,
-            nft,
-            virtualBaseTokenReserves,
-            virtualNftReserves,
-            feeRate,
-            merkleRoot,
-            address(stolenNftOracle),
-            owner
+            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, address(stolenNftOracle)
+        );
+
+        vm.mockCall(
+            address(factory),
+            abi.encodeWithSelector(ERC721.ownerOf.selector, address(privatePool)),
+            abi.encode(address(this))
         );
 
         for (uint256 i = 0; i < 5; i++) {
