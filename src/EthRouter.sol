@@ -35,7 +35,8 @@ contract EthRouter is ERC721TokenReceiver {
     }
 
     struct Deposit {
-        address privatePool;
+        address payable privatePool;
+        address nft;
         uint256[] tokenIds;
     }
 
@@ -48,7 +49,8 @@ contract EthRouter is ERC721TokenReceiver {
     }
 
     struct Change {
-        address privatePool;
+        address payable privatePool;
+        address nft;
         uint256[] inputTokenIds;
         uint256[] inputTokenWeights;
         PrivatePool.MerkleMultiProof inputProof;
@@ -59,6 +61,7 @@ contract EthRouter is ERC721TokenReceiver {
 
     error DeadlinePassed();
     error OutputAmountTooSmall();
+    error PriceOutOfRange();
 
     /// @notice The royalty registry from manifold.xyz.
     IRoyaltyRegistry public immutable royaltyRegistry;
@@ -157,8 +160,76 @@ contract EthRouter is ERC721TokenReceiver {
         msg.sender.safeTransferETH(address(this).balance);
     }
 
-    function deposit(Deposit calldata _deposit, uint256 minPrice, uint256 maxPrice, uint256 deadline) public payable {}
-    function change(Change[] calldata changes, uint256 maxFeeAmount, uint256 deadline) public payable {}
+    function deposit(
+        address payable privatePool,
+        address nft,
+        uint256[] calldata tokenIds,
+        uint256 minPrice,
+        uint256 maxPrice,
+        uint256 deadline
+    ) public payable {
+        // check deadline has not passed (if any)
+        if (block.timestamp > deadline && deadline != 0) {
+            revert DeadlinePassed();
+        }
+
+        // check pool price is in between min and max
+        uint256 price = PrivatePool(privatePool).price();
+        if (price > maxPrice || price < minPrice) {
+            revert PriceOutOfRange();
+        }
+
+        // transfer NFTs from caller
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
+        }
+
+        // approve pair to transfer NFTs from router
+        ERC721(nft).setApprovalForAll(privatePool, true);
+
+        // execute deposit
+        PrivatePool(privatePool).deposit{value: msg.value}(tokenIds, msg.value);
+    }
+
+    function change(Change[] calldata changes, uint256 deadline) public payable {
+        // check deadline has not passed (if any)
+        if (block.timestamp > deadline && deadline != 0) {
+            revert DeadlinePassed();
+        }
+
+        // loop through and execute the changes
+        for (uint256 i = 0; i < changes.length; i++) {
+            Change memory _change = changes[i];
+
+            // transfer NFTs from caller
+            for (uint256 j = 0; j < changes[i].inputTokenIds.length; j++) {
+                ERC721(_change.nft).safeTransferFrom(msg.sender, address(this), _change.inputTokenIds[j]);
+            }
+
+            // approve pair to transfer NFTs from router
+            ERC721(_change.nft).setApprovalForAll(_change.privatePool, true);
+
+            // execute change
+            PrivatePool(_change.privatePool).change{value: msg.value}(
+                _change.inputTokenIds,
+                _change.inputTokenWeights,
+                _change.inputProof,
+                _change.outputTokenIds,
+                _change.outputTokenWeights,
+                _change.outputProof
+            );
+
+            // transfer NFTs to caller
+            for (uint256 j = 0; j < changes[i].outputTokenIds.length; j++) {
+                ERC721(_change.nft).safeTransferFrom(address(this), msg.sender, _change.outputTokenIds[j]);
+            }
+        }
+
+        // refund any surplus ETH to the caller
+        if (address(this).balance > 0) {
+            msg.sender.safeTransferETH(address(this).balance);
+        }
+    }
 
     function _payRoyalty(address tokenAddress, uint256 tokenId, uint256 salePrice)
         internal
