@@ -30,22 +30,20 @@ contract PrivatePoolMetadata {
     function attributes(uint256 tokenId) public view returns (string memory) {
         PrivatePool privatePool = PrivatePool(payable(address(uint160(tokenId))));
 
-        bytes memory attributes;
-        {
-            // forgefmt: disable-next-item
-            attributes = abi.encodePacked(
-                trait("Pool address", Strings.toHexString(address(privatePool))), ',',
-                trait("Base token", Strings.toHexString(privatePool.baseToken())), ',',
-                trait("NFT", Strings.toHexString(privatePool.nft())), ',',
-                trait("Virtual base token reserves",Strings.toString(privatePool.virtualBaseTokenReserves())), ',',
-                trait("Virtual NFT reserves", Strings.toString(privatePool.virtualNftReserves())), ',',
-                trait("Fee rate (bps): ", Strings.toString(privatePool.feeRate())), ',',
-                trait("NFT balance", Strings.toString(ERC721(privatePool.nft()).balanceOf(address(privatePool)))), ',',
-                trait("Base token balance",  Strings.toString(privatePool.baseToken() == address(0) ? address(privatePool).balance : ERC20(privatePool.baseToken()).balanceOf(address(privatePool))))
-            );
-        }
+        bytes memory _attributes;
+        // forgefmt: disable-next-item
+        _attributes = abi.encodePacked(
+            trait("Pool address", Strings.toHexString(address(privatePool))), ',',
+            trait("Base token", Strings.toHexString(privatePool.baseToken())), ',',
+            trait("NFT", Strings.toHexString(privatePool.nft())), ',',
+            trait("Virtual base token reserves",Strings.toString(privatePool.virtualBaseTokenReserves())), ',',
+            trait("Virtual NFT reserves", Strings.toString(privatePool.virtualNftReserves())), ',',
+            trait("Fee rate (bps): ", Strings.toString(privatePool.feeRate())), ',',
+            trait("NFT balance", Strings.toString(ERC721(privatePool.nft()).balanceOf(address(privatePool)))), ',',
+            trait("Base token balance",  Strings.toString(privatePool.baseToken() == address(0) ? address(privatePool).balance : ERC20(privatePool.baseToken()).balanceOf(address(privatePool))))
+        );
 
-        return string(attributes);
+        return string(_attributes);
     }
 
     /// @notice Returns an svg image for a pool.
@@ -54,10 +52,10 @@ contract PrivatePoolMetadata {
         PrivatePool privatePool = PrivatePool(payable(address(uint160(tokenId))));
 
         // break up svg building into multiple scopes to avoid stack too deep errors
-        bytes memory svg;
+        bytes memory _svg;
         {
             // forgefmt: disable-next-item
-            svg = abi.encodePacked(
+            _svg = abi.encodePacked(
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" style="width:100%;background:black;fill:white;font-family:serif;">',
                     '<text x="24px" y="24px" font-size="12">',
                         "Caviar AMM private pool position",
@@ -76,8 +74,8 @@ contract PrivatePoolMetadata {
 
         {
             // forgefmt: disable-next-item
-            svg = abi.encodePacked(
-                svg,
+            _svg = abi.encodePacked(
+                _svg,
                 '<text x="24px" y="120px" font-size="12">',
                     "Virtual base token reserves: ", Strings.toString(privatePool.virtualBaseTokenReserves()),
                 "</text>",
@@ -92,8 +90,8 @@ contract PrivatePoolMetadata {
 
         {
             // forgefmt: disable-next-item
-            svg = abi.encodePacked(
-                svg, 
+            _svg = abi.encodePacked(
+                _svg, 
                     '<text x="24px" y="192px" font-size="12">',
                         "NFT balance: ", Strings.toString(ERC721(privatePool.nft()).balanceOf(address(privatePool))),
                     "</text>",
@@ -104,7 +102,7 @@ contract PrivatePoolMetadata {
             );
         }
 
-        return svg;
+        return _svg;
     }
 
     function trait(string memory traitType, string memory value) internal pure returns (string memory) {
