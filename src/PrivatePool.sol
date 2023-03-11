@@ -185,7 +185,7 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC20(baseToken).transferFrom(msg.sender, address(this), netInputAmount);
         }
 
-        // calculate the sale price
+        // calculate the sale price (assume it's the same for each NFT even if weights differ)
         uint256 salePrice = (netInputAmount - feeAmount) / tokenIds.length;
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
@@ -196,7 +196,7 @@ contract PrivatePool is ERC721TokenReceiver {
                 // pay the royalty fee for the NFT
                 (uint256 royaltyFee,) = _payRoyalty(nft, tokenIds[i], salePrice);
 
-                // add the royaly fee to the net input amount
+                // add the royalty fee to the net input amount
                 netInputAmount += royaltyFee;
             }
         }
@@ -247,9 +247,20 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // ~~~ Interactions ~~~ //
 
-        // transfer the nfts from the caller
+        // calculate the sale price (assume it's the same for each NFT even if weights differ)
+        uint256 salePrice = (netOutputAmount + feeAmount) / tokenIds.length;
+
         for (uint256 i = 0; i < tokenIds.length; i++) {
+            // transfer each nft from the caller
             ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
+
+            if (payRoyalties) {
+                // pay the royalty fee for the NFT
+                (uint256 royaltyFee,) = _payRoyalty(nft, tokenIds[i], salePrice);
+
+                // subtract the royalty fee from the net output amount
+                netOutputAmount -= royaltyFee;
+            }
         }
 
         // transfer eth to the caller if the base token is ETH or transfer the base token to the caller if the base

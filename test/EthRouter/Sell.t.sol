@@ -86,30 +86,6 @@ contract SellTest is Fixture {
         ethRouter.sell(sells, minOutputAmount + 100, 0);
     }
 
-    function test_PaysRoyalty() public {
-        // arrange
-        EthRouter.Sell[] memory sells = new EthRouter.Sell[](2);
-        (EthRouter.Sell memory sell1, uint256 outputAmount1) = _addSell();
-        (EthRouter.Sell memory sell2, uint256 outputAmount2) = _addSell();
-        minOutputAmount += outputAmount1 + outputAmount2;
-        sells[0] = sell1;
-        sells[1] = sell2;
-
-        uint256 royaltyFeeRate = 0.1e18; // 10%
-        address royaltyRecipient = address(0xbeefbeef);
-        milady.setRoyaltyInfo(royaltyFeeRate, royaltyRecipient);
-        uint256 royaltyFee = minOutputAmount * royaltyFeeRate / 1e18;
-        minOutputAmount = minOutputAmount - royaltyFee;
-
-        // act
-        ethRouter.sell(sells, minOutputAmount, 0);
-
-        // assert
-        assertApproxEqAbs(
-            address(royaltyRecipient).balance, royaltyFee, 10, "Should have transferred output amount to caller"
-        );
-    }
-
     function test_CallsPrivatePoolWithSellData() public {
         // arrange
         EthRouter.Sell[] memory sells = new EthRouter.Sell[](2);

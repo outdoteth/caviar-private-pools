@@ -106,21 +106,6 @@ contract BuyTest is Fixture {
         ethRouter.buy{value: maxInputAmount}(buys, 99);
     }
 
-    function test_PaysRoyalties() public {
-        // arrange
-        uint256 royaltyFeeRate = 0.1e18; // 10%
-        address royaltyRecipient = address(0xbeefbeef);
-        milady.setRoyaltyInfo(royaltyFeeRate, royaltyRecipient);
-        uint256 royaltyFee = maxInputAmount * royaltyFeeRate / 1e18;
-        maxInputAmount = maxInputAmount + royaltyFee;
-
-        // act
-        ethRouter.buy{value: maxInputAmount}(buys, 0);
-
-        // assert
-        assertEq(address(0xbeefbeef).balance, royaltyFee, "Should have paid royalties");
-    }
-
     function test_BuysFromPublicPool() public {
         // arrange
         Pair pair = caviar.create(address(milady), address(0), bytes32(0));

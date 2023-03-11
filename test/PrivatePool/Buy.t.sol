@@ -122,10 +122,11 @@ contract BuyTest is Fixture {
         netInputAmount = netInputAmount + royaltyFee;
 
         // act
-        privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
+        (uint256 returnedNetInputAmount,) = privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
 
         // assert
-        assertEq(address(0xbeefbeef).balance, royaltyFee, "Should have paid royalties");
+        assertEq(royaltyRecipient.balance, royaltyFee, "Should have paid royalties");
+        assertEq(returnedNetInputAmount, netInputAmount, "Should have returned net input amount");
     }
 
     function test_TransfersBaseTokensToPair() public {

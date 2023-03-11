@@ -183,6 +183,32 @@ contract SellTest is Fixture {
         );
     }
 
+    function test_PaysRoyaltiesIfRoyaltiesAreSet() public {
+        // arrange
+        uint256 royaltyFeeRate = 0.1e18; // 10%
+        address royaltyRecipient = address(0xbeefbeef);
+        milady.setRoyaltyInfo(royaltyFeeRate, royaltyRecipient);
+        vm.mockCall(
+            address(factory),
+            abi.encodeWithSelector(ERC721.ownerOf.selector, address(privatePool)),
+            abi.encode(address(this))
+        );
+        privatePool.setPayRoyalties(true);
+        tokenIds.push(1);
+        tokenIds.push(2);
+        tokenIds.push(3);
+        (uint256 netOutputAmount,) = privatePool.sellQuote(tokenIds.length * 1e18);
+        uint256 royaltyFee = netOutputAmount * royaltyFeeRate / 1e18;
+        netOutputAmount = netOutputAmount - royaltyFee;
+
+        // act
+        (uint256 returnedNetOutputAmount,) = privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);
+
+        // assert
+        assertEq(royaltyRecipient.balance, royaltyFee, "Should have paid royalty fee");
+        assertEq(returnedNetOutputAmount, netOutputAmount, "Should have returned net output amount");
+    }
+
     function test_SumsWeightsIfMerkleRootIsSet() public {
         // arrange
         privatePool = new PrivatePool(address(factory), address(royaltyRegistry));

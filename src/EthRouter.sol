@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
 import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
 import {Pair, ReservoirOracle} from "caviar/Pair.sol";
 
@@ -63,13 +62,6 @@ contract EthRouter is ERC721TokenReceiver {
     error OutputAmountTooSmall();
     error PriceOutOfRange();
 
-    /// @notice The royalty registry from manifold.xyz.
-    IRoyaltyRegistry public immutable royaltyRegistry;
-
-    constructor(IRoyaltyRegistry _royaltyRegistry) {
-        royaltyRegistry = _royaltyRegistry;
-    }
-
     receive() external payable {}
 
     /// @notice Executes a series of buy operations against public or private pools.
@@ -103,9 +95,6 @@ contract EthRouter is ERC721TokenReceiver {
             for (uint256 j = 0; j < buys[i].tokenIds.length; j++) {
                 // transfer the NFT to the caller
                 ERC721(buys[i].nft).safeTransferFrom(address(this), msg.sender, buys[i].tokenIds[j]);
-
-                // pay the royalty fee for the NFT
-                _payRoyalty(buys[i].nft, buys[i].tokenIds[j], salePrice);
             }
         }
 
@@ -153,12 +142,6 @@ contract EthRouter is ERC721TokenReceiver {
                 (netOutputAmount,) = PrivatePool(sells[i].pool).sell(
                     sells[i].tokenIds, sells[i].tokenWeights, sells[i].proof, sells[i].stolenNftProofs
                 );
-            }
-
-            // pay the royalty fees for each NFT
-            uint256 salePrice = netOutputAmount / sells[i].tokenIds.length;
-            for (uint256 j = 0; j < sells[i].tokenIds.length; j++) {
-                _payRoyalty(sells[i].nft, sells[i].tokenIds[j], salePrice);
             }
         }
 
@@ -251,31 +234,6 @@ contract EthRouter is ERC721TokenReceiver {
         // refund any surplus ETH to the caller
         if (address(this).balance > 0) {
             msg.sender.safeTransferETH(address(this).balance);
-        }
-    }
-
-    /// @notice Pays royalties to the royalty recipient for a given NFT and sale price. Looks up the royalty info from
-    /// the manifold registry.
-    /// @param tokenAddress The address of the NFT contract.
-    /// @param tokenId The token ID of the NFT.
-    /// @param salePrice The sale price of the NFT.
-    /// @return royaltyFee The royalty fee to pay.
-    /// @return recipient The address to pay the royalty fee to.
-    function _payRoyalty(address tokenAddress, uint256 tokenId, uint256 salePrice)
-        internal
-        returns (uint256 royaltyFee, address recipient)
-    {
-        // get the royalty lookup address
-        address lookupAddress = royaltyRegistry.getRoyaltyLookupAddress(tokenAddress);
-
-        if (IERC2981(lookupAddress).supportsInterface(type(IERC2981).interfaceId)) {
-            // get the royalty fee from the registry
-            (recipient, royaltyFee) = IERC2981(lookupAddress).royaltyInfo(tokenId, salePrice);
-
-            // transfer the royalty fee to the recipient if it's greater than 0
-            if (royaltyFee > 0 && recipient != address(0)) {
-                recipient.safeTransferETH(royaltyFee);
-            }
         }
     }
 }
