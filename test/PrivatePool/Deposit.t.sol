@@ -24,9 +24,16 @@ contract DepositTest is Fixture {
     mapping(uint256 => bool) existingTokenIds;
 
     function setUp() public {
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, address(stolenNftOracle)
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            false
         );
 
         for (uint256 i = 0; i < 5; i++) {
@@ -59,7 +66,7 @@ contract DepositTest is Fixture {
 
     function test_TransfersBaseTokensFromCaller() public {
         // arrange
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
             address(shibaInu),
             nft,
@@ -67,7 +74,8 @@ contract DepositTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle)
+            address(stolenNftOracle),
+            false
         );
         uint256 baseTokenAmount = 3.156e18;
         deal(address(shibaInu), address(this), baseTokenAmount);
@@ -109,7 +117,7 @@ contract DepositTest is Fixture {
 
     function test_RevertIf_BaseTokenIsNotEthAndValueIsGreaterThanZero() public {
         // arrange
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
             address(shibaInu),
             nft,
@@ -117,7 +125,8 @@ contract DepositTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle)
+            address(stolenNftOracle),
+            false
         );
         uint256 baseTokenAmount = 1e18;
 

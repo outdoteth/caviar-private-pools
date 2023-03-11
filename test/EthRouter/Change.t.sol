@@ -4,11 +4,13 @@ pragma solidity ^0.8.19;
 import "../Fixture.sol";
 
 contract ChangeTest is Fixture {
-    PrivatePool public privatePool = new PrivatePool(address(factory));
+    PrivatePool public privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
     EthRouter.Change[] public changes;
 
     function setUp() public {
-        privatePool.initialize(address(0), address(milady), 10e18, 10e18, 0, bytes32(0), address(stolenNftOracle));
+        privatePool.initialize(
+            address(0), address(milady), 10e18, 10e18, 0, bytes32(0), address(stolenNftOracle), false
+        );
 
         for (uint256 i = 0; i < 5; i++) {
             milady.mint(address(privatePool), i);

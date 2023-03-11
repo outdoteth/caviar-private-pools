@@ -17,7 +17,7 @@ contract CreateTest is Fixture {
     uint256 baseTokenAmount = 20;
 
     function setUp() public {
-        privatePoolImplementation = new PrivatePool(address(factory));
+        privatePoolImplementation = new PrivatePool(address(factory), address(royaltyRegistry));
         factory = new Factory();
         factory.setPrivatePoolImplementation(address(privatePoolImplementation));
 
@@ -45,7 +45,8 @@ contract CreateTest is Fixture {
             address(stolenNftOracle),
             salt,
             tokenIds,
-            baseTokenAmount
+            baseTokenAmount,
+            false
         );
     }
 
@@ -66,7 +67,8 @@ contract CreateTest is Fixture {
             address(stolenNftOracle),
             salt,
             tokenIds,
-            baseTokenAmount
+            baseTokenAmount,
+            false
         );
 
         // assert
@@ -95,7 +97,8 @@ contract CreateTest is Fixture {
             address(stolenNftOracle),
             salt,
             tokenIds,
-            baseTokenAmount
+            baseTokenAmount,
+            false
         );
 
         // assert
@@ -119,7 +122,8 @@ contract CreateTest is Fixture {
             address(stolenNftOracle),
             salt,
             tokenIds,
-            baseTokenAmount
+            baseTokenAmount,
+            false
         );
 
         // assert
@@ -145,7 +149,8 @@ contract CreateTest is Fixture {
             address(stolenNftOracle),
             salt,
             tokenIds,
-            baseTokenAmount
+            baseTokenAmount,
+            false
         );
 
         // assert
@@ -172,7 +177,8 @@ contract CreateTest is Fixture {
             address(stolenNftOracle),
             salt,
             tokenIds,
-            baseTokenAmount
+            baseTokenAmount,
+            false
         );
     }
 
@@ -189,7 +195,8 @@ contract CreateTest is Fixture {
             address(stolenNftOracle),
             salt,
             tokenIds,
-            baseTokenAmount
+            baseTokenAmount,
+            false
         );
     }
 }

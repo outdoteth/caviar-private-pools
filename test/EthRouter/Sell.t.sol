@@ -24,7 +24,8 @@ contract SellTest is Fixture {
             address(stolenNftOracle),
             bytes32(address(this).balance), // random between each call to _addBuy
             empty,
-            100e18
+            100e18,
+            false
         );
 
         uint256[] memory tokenIds = new uint256[](2);

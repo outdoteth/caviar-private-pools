@@ -6,6 +6,8 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
+import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
+import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
 
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 
@@ -20,7 +22,7 @@ contract PrivatePool is ERC721TokenReceiver {
     }
 
     // forgefmt: disable-next-item
-    event Initialize(address indexed baseToken, address indexed nft, uint128 virtualBaseTokenReserves, uint128 virtualNftReserves, uint16 feeRate, bytes32 merkleRoot, address stolenNftOracle);
+    event Initialize(address indexed baseToken, address indexed nft, uint128 virtualBaseTokenReserves, uint128 virtualNftReserves, uint16 feeRate, bytes32 merkleRoot, address stolenNftOracle, bool payRoyalties);
     event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount);
     event Sell(uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount);
     event Deposit(uint256[] tokenIds, uint256 baseTokenAmount);
@@ -31,6 +33,7 @@ contract PrivatePool is ERC721TokenReceiver {
     event SetMerkleRoot(bytes32 merkleRoot);
     event SetFeeRate(uint16 feeRate);
     event SetStolenNftOracle(address stolenNftOracle);
+    event SetPayRoyalties(bool payRoyalties);
 
     error AlreadyInitialized();
     error Unauthorized();
@@ -74,6 +77,9 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @notice The factory contract that created this pool.
     address public immutable factory;
 
+    /// @notice The royalty registry from manifold.xyz.
+    address public immutable royaltyRegistry;
+
     modifier onlyOwner() virtual {
         if (msg.sender != ERC721(factory).ownerOf(uint160(address(this)))) {
             revert Unauthorized();
@@ -83,8 +89,9 @@ contract PrivatePool is ERC721TokenReceiver {
 
     receive() external payable {}
 
-    constructor(address _factory) {
+    constructor(address _factory, address _royaltyRegistry) {
         factory = _factory;
+        royaltyRegistry = _royaltyRegistry;
     }
 
     /// @notice Initializes the private pool and sets the initial parameters. Should only be called once by the factory.
@@ -102,13 +109,14 @@ contract PrivatePool is ERC721TokenReceiver {
         uint128 _virtualNftReserves,
         uint16 _feeRate,
         bytes32 _merkleRoot,
-        address _stolenNftOracle
+        address _stolenNftOracle,
+        bool _payRoyalties
     ) public {
         // prevent duplicate initialization
         if (initialized) revert AlreadyInitialized();
 
         // check that the fee rate is less than 50%
-        if (_feeRate >= 5_000) revert FeeRateTooHigh();
+        if (_feeRate > 5_000) revert FeeRateTooHigh();
 
         // set the state variables
         baseToken = _baseToken;
@@ -118,14 +126,21 @@ contract PrivatePool is ERC721TokenReceiver {
         feeRate = _feeRate;
         merkleRoot = _merkleRoot;
         stolenNftOracle = _stolenNftOracle;
-        // factory = _factory;
+        payRoyalties = _payRoyalties;
 
         // mark the pool as initialized
         initialized = true;
 
         // emit the events
         emit Initialize(
-            _baseToken, _nft, _virtualBaseTokenReserves, _virtualNftReserves, _feeRate, _merkleRoot, _stolenNftOracle
+            _baseToken,
+            _nft,
+            _virtualBaseTokenReserves,
+            _virtualNftReserves,
+            _feeRate,
+            _merkleRoot,
+            _stolenNftOracle,
+            _payRoyalties
         );
     }
 
@@ -170,9 +185,20 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC20(baseToken).transferFrom(msg.sender, address(this), netInputAmount);
         }
 
-        // transfer the NFTs to the caller
+        // calculate the sale price
+        uint256 salePrice = (netInputAmount - feeAmount) / tokenIds.length;
+
         for (uint256 i = 0; i < tokenIds.length; i++) {
+            // transfer the NFT to the caller
             ERC721(nft).safeTransferFrom(address(this), msg.sender, tokenIds[i]);
+
+            if (payRoyalties) {
+                // pay the royalty fee for the NFT
+                (uint256 royaltyFee,) = _payRoyalty(nft, tokenIds[i], salePrice);
+
+                // add the royaly fee to the net input amount
+                netInputAmount += royaltyFee;
+            }
         }
 
         // if the base token is ETH then refund any excess ETH to the caller
@@ -413,7 +439,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param newFeeRate The new fee rate (in basis points)
     function setFeeRate(uint16 newFeeRate) public onlyOwner {
         // check that the fee rate is less than 50%
-        if (newFeeRate >= 5_000) revert FeeRateTooHigh();
+        if (newFeeRate > 5_000) revert FeeRateTooHigh();
 
         // set the fee rate
         feeRate = newFeeRate;
@@ -431,6 +457,17 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // emit the set stolen NFT oracle event
         emit SetStolenNftOracle(newStolenNftOracle);
+    }
+
+    /// @notice Sets the pay royalties flag. Can only be called by the owner of the pool. If royalties are enabled then
+    /// the pool will pay royalties when buying or selling NFTs.
+    /// @param newPayRoyalties The new pay royalties flag.
+    function setPayRoyalties(bool newPayRoyalties) public onlyOwner {
+        // set the pay royalties flag
+        payRoyalties = newPayRoyalties;
+
+        // emit the set pay royalties event
+        emit SetPayRoyalties(newPayRoyalties);
     }
 
     /// @notice Returns the required input of buying a given amount of NFTs inclusive of the fee which is dependent on
@@ -507,5 +544,30 @@ contract PrivatePool is ERC721TokenReceiver {
         }
 
         return sum;
+    }
+
+    /// @notice Pays royalties to the royalty recipient for a given NFT and sale price. Looks up the royalty info from
+    /// the manifold registry.
+    /// @param tokenAddress The address of the NFT contract.
+    /// @param tokenId The token ID of the NFT.
+    /// @param salePrice The sale price of the NFT.
+    /// @return royaltyFee The royalty fee to pay.
+    /// @return recipient The address to pay the royalty fee to.
+    function _payRoyalty(address tokenAddress, uint256 tokenId, uint256 salePrice)
+        internal
+        returns (uint256 royaltyFee, address recipient)
+    {
+        // get the royalty lookup address
+        address lookupAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(tokenAddress);
+
+        if (IERC2981(lookupAddress).supportsInterface(type(IERC2981).interfaceId)) {
+            // get the royalty fee from the registry
+            (recipient, royaltyFee) = IERC2981(lookupAddress).royaltyInfo(tokenId, salePrice);
+
+            // transfer the royalty fee to the recipient if it's greater than 0
+            if (royaltyFee > 0 && recipient != address(0)) {
+                recipient.safeTransferETH(royaltyFee);
+            }
+        }
     }
 }

@@ -28,8 +28,10 @@ contract NftTest is Fixture {
 
     function test_tokenURI_ReturnsTokenURI() public {
         // arrange
-        PrivatePool privatePool = new PrivatePool(address(factory));
-        privatePool.initialize(address(0), address(milady), 100e18, 20e18, 2000, bytes32(0), address(stolenNftOracle));
+        PrivatePool privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool.initialize(
+            address(0), address(milady), 100e18, 20e18, 2000, bytes32(0), address(stolenNftOracle), false
+        );
         payable(address(privatePool)).transfer(0.1 ether);
         milady.mint(address(privatePool), 1);
         milady.mint(address(privatePool), 2);

@@ -8,15 +8,16 @@ contract SettersTest is Fixture {
     event SetMerkleRoot(bytes32 merkleRoot);
     event SetFeeRate(uint16 feeRate);
     event SetStolenNftOracle(address stolenNftOracle);
+    event SetPayRoyalties(bool setPayRoyalties);
 
     PrivatePool public privatePool;
 
     address owner = address(this);
 
     function setUp() public {
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
-            address(shibaInu), address(0), 100, 200, 300, bytes32(abi.encode(0xaaa)), address(stolenNftOracle)
+            address(shibaInu), address(0), 100, 200, 300, bytes32(abi.encode(0xaaa)), address(stolenNftOracle), true
         );
 
         vm.mockCall(
@@ -142,5 +143,33 @@ contract SettersTest is Fixture {
         vm.prank(address(0xbabe));
         vm.expectRevert(PrivatePool.Unauthorized.selector);
         privatePool.setStolenNftOracle(address(0xdeadbeef));
+    }
+
+    function test_setPayRoyalties_EmitsSetPayRoyaltiesEvent() public {
+        // arrange
+        bool payRoyalties = false;
+
+        // act
+        vm.expectEmit(true, true, true, true);
+        emit SetPayRoyalties(payRoyalties);
+        privatePool.setPayRoyalties(payRoyalties);
+    }
+
+    function test_setPayRoyalties_SetsPayRoyalties() public {
+        // arrange
+        bool payRoyalties = true;
+
+        // act
+        privatePool.setPayRoyalties(payRoyalties);
+
+        // assert
+        assertEq(privatePool.payRoyalties(), payRoyalties, "Should have set pay royalties");
+    }
+
+    function test_setPayRoyalties_RevertIf_NotOwner() public {
+        // act
+        vm.prank(address(0xbabe));
+        vm.expectRevert(PrivatePool.Unauthorized.selector);
+        privatePool.setPayRoyalties(false);
     }
 }

@@ -24,9 +24,16 @@ contract WithdrawTest is Fixture {
     mapping(uint256 => bool) existingTokenIds;
 
     function setUp() public {
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, address(stolenNftOracle)
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            false
         );
 
         for (uint256 i = 0; i < 5; i++) {
@@ -56,7 +63,7 @@ contract WithdrawTest is Fixture {
 
     function test_TransfersBaseTokensToCaller() public {
         // arrange
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
             address(shibaInu),
             nft,
@@ -64,7 +71,8 @@ contract WithdrawTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle)
+            address(stolenNftOracle),
+            false
         );
 
         vm.mockCall(

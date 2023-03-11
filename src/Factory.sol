@@ -46,7 +46,8 @@ contract Factory is ERC721, Owned {
         address _stolenNftOracle,
         bytes32 _salt,
         uint256[] calldata tokenIds,
-        uint256 baseTokenAmount
+        uint256 baseTokenAmount,
+        bool _payRoyalties
     ) public payable returns (PrivatePool privatePool) {
         // check that the msg.value is equal to the base token amount if the base token is ETH or the msg.value is equal
         // to zero if the base token is not ETH
@@ -62,7 +63,14 @@ contract Factory is ERC721, Owned {
 
         // initialize the pool
         privatePool.initialize(
-            _baseToken, _nft, _virtualBaseTokenReserves, _virtualNftReserves, _feeRate, _merkleRoot, _stolenNftOracle
+            _baseToken,
+            _nft,
+            _virtualBaseTokenReserves,
+            _virtualNftReserves,
+            _feeRate,
+            _merkleRoot,
+            _stolenNftOracle,
+            _payRoyalties
         );
 
         if (_baseToken == address(0)) {

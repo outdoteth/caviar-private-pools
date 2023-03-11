@@ -21,9 +21,16 @@ contract QuotesTest is Fixture {
     PrivatePool.MerkleMultiProof proofs;
 
     function setUp() public {
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, address(stolenNftOracle)
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            false
         );
 
         vm.mockCall(

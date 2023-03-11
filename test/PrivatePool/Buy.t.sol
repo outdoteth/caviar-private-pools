@@ -22,9 +22,16 @@ contract BuyTest is Fixture {
     PrivatePool.MerkleMultiProof proofs;
 
     function setUp() public {
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
-            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, feeRate, merkleRoot, address(stolenNftOracle)
+            baseToken,
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            feeRate,
+            merkleRoot,
+            address(stolenNftOracle),
+            false
         );
 
         for (uint256 i = 0; i < 5; i++) {
@@ -96,9 +103,34 @@ contract BuyTest is Fixture {
         }
     }
 
+    function test_PaysRoyaltiesIfRoyaltyFeeIsSet() public {
+        // arrange
+        uint256 royaltyFeeRate = 0.1e18; // 10%
+        address royaltyRecipient = address(0xbeefbeef);
+        milady.setRoyaltyInfo(royaltyFeeRate, royaltyRecipient);
+        vm.mockCall(
+            address(factory),
+            abi.encodeWithSelector(ERC721.ownerOf.selector, address(privatePool)),
+            abi.encode(address(this))
+        );
+        privatePool.setPayRoyalties(true);
+        tokenIds.push(1);
+        tokenIds.push(2);
+        tokenIds.push(3);
+        (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+        uint256 royaltyFee = netInputAmount * royaltyFeeRate / 1e18;
+        netInputAmount = netInputAmount + royaltyFee;
+
+        // act
+        privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
+
+        // assert
+        assertEq(address(0xbeefbeef).balance, royaltyFee, "Should have paid royalties");
+    }
+
     function test_TransfersBaseTokensToPair() public {
         // arrange
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
             address(shibaInu),
             nft,
@@ -106,7 +138,8 @@ contract BuyTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle)
+            address(stolenNftOracle),
+            false
         );
 
         for (uint256 i = 10; i < 13; i++) {
@@ -175,7 +208,7 @@ contract BuyTest is Fixture {
 
     function test_RevertIf_CallerSentEthAndBaseTokenIsNotSetAsEth() public {
         // arrange
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
             address(shibaInu),
             nft,
@@ -183,7 +216,8 @@ contract BuyTest is Fixture {
             virtualNftReserves,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle)
+            address(stolenNftOracle),
+            false
         );
 
         // act
@@ -193,7 +227,7 @@ contract BuyTest is Fixture {
 
     function test_SumsWeightsIfMerkleRootIsSet() public {
         // arrange
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
             baseToken,
             nft,
@@ -201,7 +235,8 @@ contract BuyTest is Fixture {
             virtualNftReserves,
             feeRate,
             generateMerkleRoot(),
-            address(stolenNftOracle)
+            address(stolenNftOracle),
+            false
         );
 
         milady.mint(address(privatePool), 6);
@@ -219,7 +254,7 @@ contract BuyTest is Fixture {
 
     function test_RevertIf_InvalidMerkleProof() public {
         // arrange
-        privatePool = new PrivatePool(address(factory));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
         privatePool.initialize(
             baseToken,
             nft,
@@ -227,7 +262,8 @@ contract BuyTest is Fixture {
             virtualNftReserves,
             feeRate,
             generateMerkleRoot(),
-            address(stolenNftOracle)
+            address(stolenNftOracle),
+            false
         );
 
         tokenIds.push(6);
