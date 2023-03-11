@@ -6,12 +6,14 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 import {Strings} from "openzeppelin/utils/Strings.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {PrivatePool} from "./PrivatePool.sol";
 import {PrivatePoolMetadata} from "./PrivatePoolMetadata.sol";
 
 contract Factory is ERC721, Owned {
     using LibClone for address;
+    using SafeTransferLib for address;
 
     event Create(address indexed privatePool, uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
 
@@ -44,10 +46,10 @@ contract Factory is ERC721, Owned {
         uint16 _feeRate,
         bytes32 _merkleRoot,
         address _stolenNftOracle,
+        bool _payRoyalties,
         bytes32 _salt,
         uint256[] calldata tokenIds,
-        uint256 baseTokenAmount,
-        bool _payRoyalties
+        uint256 baseTokenAmount
     ) public payable returns (PrivatePool privatePool) {
         // check that the msg.value is equal to the base token amount if the base token is ETH or the msg.value is equal
         // to zero if the base token is not ETH
@@ -75,7 +77,7 @@ contract Factory is ERC721, Owned {
 
         if (_baseToken == address(0)) {
             // transfer eth into the pool if base token is ETH
-            payable(address(privatePool)).transfer(baseTokenAmount);
+            address(privatePool).safeTransferETH(baseTokenAmount);
         } else {
             // deposit the base tokens from the caller into the pool
             ERC20(_baseToken).transferFrom(msg.sender, address(privatePool), baseTokenAmount);

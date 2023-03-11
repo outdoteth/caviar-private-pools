@@ -43,10 +43,10 @@ contract CreateTest is Fixture {
             feeRate,
             merkleRoot,
             address(stolenNftOracle),
+            false,
             salt,
             tokenIds,
-            baseTokenAmount,
-            false
+            baseTokenAmount
         );
     }
 
@@ -65,10 +65,10 @@ contract CreateTest is Fixture {
             feeRate,
             merkleRoot,
             address(stolenNftOracle),
+            false,
             salt,
             tokenIds,
-            baseTokenAmount,
-            false
+            baseTokenAmount
         );
 
         // assert
@@ -95,10 +95,10 @@ contract CreateTest is Fixture {
             feeRate,
             merkleRoot,
             address(stolenNftOracle),
+            false,
             salt,
             tokenIds,
-            baseTokenAmount,
-            false
+            baseTokenAmount
         );
 
         // assert
@@ -120,10 +120,10 @@ contract CreateTest is Fixture {
             feeRate,
             merkleRoot,
             address(stolenNftOracle),
+            false,
             salt,
             tokenIds,
-            baseTokenAmount,
-            false
+            baseTokenAmount
         );
 
         // assert
@@ -147,10 +147,10 @@ contract CreateTest is Fixture {
             feeRate,
             merkleRoot,
             address(stolenNftOracle),
+            false,
             salt,
             tokenIds,
-            baseTokenAmount,
-            false
+            baseTokenAmount
         );
 
         // assert
@@ -175,10 +175,10 @@ contract CreateTest is Fixture {
             feeRate,
             merkleRoot,
             address(stolenNftOracle),
+            false,
             salt,
             tokenIds,
-            baseTokenAmount,
-            false
+            baseTokenAmount
         );
     }
 
@@ -193,10 +193,10 @@ contract CreateTest is Fixture {
             feeRate,
             merkleRoot,
             address(stolenNftOracle),
+            false,
             salt,
             tokenIds,
-            baseTokenAmount,
-            false
+            baseTokenAmount
         );
     }
 }

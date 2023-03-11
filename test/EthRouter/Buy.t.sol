@@ -30,10 +30,10 @@ contract BuyTest is Fixture {
             200,
             bytes32(0),
             address(stolenNftOracle),
+            false,
             bytes32(address(this).balance), // random between each call to _addBuy
             empty,
-            1e18,
-            false
+            1e18
         );
         uint256[] memory tokenIds = new uint256[](2);
         for (uint256 i = 0; i < 2; i++) {

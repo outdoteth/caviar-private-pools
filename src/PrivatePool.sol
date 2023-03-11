@@ -277,6 +277,8 @@ contract PrivatePool is ERC721TokenReceiver {
 
     /// @notice Deposits base tokens and NFTs into the pool. The caller must approve the pool to transfer their NFTs and
     /// base tokens.
+    /// @dev DO NOT call this function directly unless you know what you are doing. Instead, use a wrapper contract that
+    /// will check the current price is within the desired bounds.
     /// @param tokenIds The token IDs of the NFTs to deposit.
     /// @param baseTokenAmount The amount of base tokens to deposit.
     function deposit(uint256[] calldata tokenIds, uint256 baseTokenAmount) public payable {
@@ -377,11 +379,6 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC20(baseToken).transferFrom(msg.sender, address(this), feeAmount);
         }
 
-        // if the base token is ETH then refund any excess ETH to the caller
-        if (baseToken == address(0) && msg.value > feeAmount) {
-            msg.sender.safeTransferETH(msg.value - feeAmount);
-        }
-
         // transfer the input nfts from the caller
         for (uint256 i = 0; i < inputTokenIds.length; i++) {
             ERC721(nft).safeTransferFrom(msg.sender, address(this), inputTokenIds[i]);
@@ -390,6 +387,11 @@ contract PrivatePool is ERC721TokenReceiver {
         // transfer the output nfts to the caller
         for (uint256 i = 0; i < outputTokenIds.length; i++) {
             ERC721(nft).safeTransferFrom(address(this), msg.sender, outputTokenIds[i]);
+        }
+
+        // if the base token is ETH then refund any excess ETH to the caller
+        if (baseToken == address(0) && msg.value > feeAmount) {
+            msg.sender.safeTransferETH(msg.value - feeAmount);
         }
 
         // emit the change event
