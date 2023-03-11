@@ -4,11 +4,14 @@ pragma solidity ^0.8.19;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 
 contract PrivatePool is ERC721TokenReceiver {
+    using SafeTransferLib for address;
+
     /// @notice Merkle proof input for a sparse merkle multi proof. It can be generated with a library like:
     /// https://github.com/OpenZeppelin/merkle-tree#treegetmultiproof
     struct MerkleMultiProof {
@@ -44,6 +47,9 @@ contract PrivatePool is ERC721TokenReceiver {
 
     /// @notice Whether or not the pool has been initialized.
     bool public initialized;
+
+    /// @notice Whether or not the pool pays royalties to the NFT creator on each trade.
+    bool public payRoyalties;
 
     /// @notice The virtual base token reserves used in the xy=k invariant. Changing this will change the liquidity
     /// depth and price of the pool.
@@ -171,7 +177,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // if the base token is ETH then refund any excess ETH to the caller
         if (baseToken == address(0) && msg.value > netInputAmount) {
-            payable(msg.sender).transfer(msg.value - netInputAmount);
+            msg.sender.safeTransferETH(msg.value - netInputAmount);
         }
 
         // emit the buy event
@@ -223,7 +229,7 @@ contract PrivatePool is ERC721TokenReceiver {
         // transfer eth to the caller if the base token is ETH or transfer the base token to the caller if the base
         // token is not ETH
         if (baseToken == address(0)) {
-            payable(msg.sender).transfer(netOutputAmount);
+            msg.sender.safeTransferETH(netOutputAmount);
         } else {
             ERC20(baseToken).transfer(msg.sender, netOutputAmount);
         }
@@ -276,7 +282,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
         if (token == address(0)) {
             // transfer the ETH to the caller
-            payable(msg.sender).transfer(tokenAmount);
+            msg.sender.safeTransferETH(tokenAmount);
         } else {
             // transfer the tokens to the caller
             ERC20(token).transfer(msg.sender, tokenAmount);
@@ -336,7 +342,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // if the base token is ETH then refund any excess ETH to the caller
         if (baseToken == address(0) && msg.value > feeAmount) {
-            payable(msg.sender).transfer(msg.value - feeAmount);
+            msg.sender.safeTransferETH(msg.value - feeAmount);
         }
 
         // transfer the input nfts from the caller
