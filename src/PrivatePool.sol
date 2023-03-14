@@ -521,12 +521,15 @@ contract PrivatePool is ERC721TokenReceiver {
         netOutputAmount = outputAmount - feeAmount;
     }
 
-    /// @notice Returns the fee required to change a given amount of NFTs. The fee is based on the current price in the
-    /// pool and the currently set fee rate.
+    /// @notice Returns the fee required to change a given amount of NFTs. The fee is based on the current changeFee
+    /// (which contains 4 decimals of precision) multiplied by some exponent depending on the base token decimals.
     /// @param inputAmount The amount of NFTs to change multiplied by 1e18.
     /// @return feeAmount The fee amount.
     function changeFeeQuote(uint256 inputAmount) public view returns (uint256 feeAmount) {
-        feeAmount = (virtualBaseTokenReserves * inputAmount * feeRate) / (10_000 * virtualNftReserves);
+        // multiply the changeFee to get the fee per NFT
+        uint256 exponent = baseToken == address(0) ? 18 - 4 : ERC20(baseToken).decimals() - 4;
+        uint256 feePerNft = changeFee * 10 ** exponent;
+        feeAmount = inputAmount * feePerNft / 1e18;
     }
 
     /// @notice Returns the price of the pool to 18 decimals of accuracy.

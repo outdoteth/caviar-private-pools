@@ -92,7 +92,24 @@ contract QuotesTest is Fixture {
     function test_changeFeeQuote_ReturnsFeeAmount() public {
         // arrange
         uint256 inputAmount = 1e18;
-        uint256 feeAmount = (privatePool.price() * inputAmount * feeRate / 1e4) / 1e18;
+        uint256 feeAmount = 0.1239 ether;
+
+        // act
+        uint256 returnedFeeAmount = privatePool.changeFeeQuote(inputAmount);
+
+        // assert
+        assertEq(returnedFeeAmount, feeAmount, "Should have returned feeAmount");
+        assertGt(returnedFeeAmount, 0, "Fee amount should be greater than 0");
+    }
+
+    function test_changeFeeQuote_ReturnsFeeAmountForBaseTokenWithDecimals() public {
+        // arrange
+        uint256 inputAmount = 2e18;
+        uint256 feeAmount = 2 * 123900;
+        stdstore.target(address(privatePool)).sig(privatePool.baseToken.selector).checked_write(address(shibaInu));
+        vm.mockCall(
+            address(shibaInu), abi.encodeWithSelector(shibaInu.decimals.selector, address(milady)), abi.encode(6)
+        );
 
         // act
         uint256 returnedFeeAmount = privatePool.changeFeeQuote(inputAmount);
