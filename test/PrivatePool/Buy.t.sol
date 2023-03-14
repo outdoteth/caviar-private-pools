@@ -38,10 +38,10 @@ contract BuyTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+        (uint256 netInputAmount,,) = privatePool.buyQuote(tokenIds.length * 1e18);
 
         // act
-        (uint256 returnedNetInputAmount,) = privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
+        (uint256 returnedNetInputAmount,,) = privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
 
         // assert
         assertEq(returnedNetInputAmount, netInputAmount, "Should have returned netInputAmount");
@@ -52,7 +52,7 @@ contract BuyTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netInputAmount, uint256 feeAmount) = privatePool.buyQuote(tokenIds.length * 1e18);
+        (uint256 netInputAmount, uint256 feeAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
 
         // act
         vm.expectEmit(true, true, true, true);
@@ -64,7 +64,7 @@ contract BuyTest is Fixture {
         // arrange
         tokenIds.push(1);
         tokenIds.push(2);
-        (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+        (uint256 netInputAmount,,) = privatePool.buyQuote(tokenIds.length * 1e18);
         uint256 surplus = 0.123e18;
         uint256 balanceBefore = address(this).balance;
 
@@ -79,12 +79,60 @@ contract BuyTest is Fixture {
         );
     }
 
+    function test_PaysProtocolFee() public {
+        // arrange
+        factory.setProtocolFeeRate(1_000); // 1%
+        tokenIds.push(1);
+        tokenIds.push(2);
+        (uint256 netInputAmount,, uint256 protocolFeeAmount) = privatePool.buyQuote(tokenIds.length * 1e18);
+
+        // act
+        privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
+
+        // assert
+        assertEq(address(factory).balance, protocolFeeAmount, "Should have paid protocol fee");
+        assertGt(protocolFeeAmount, 0, "Should have paid protocol fee");
+    }
+
+    function test_PaysProtocolFeeWithBaseToken() public {
+        // arrange
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
+        privatePool.initialize(
+            address(shibaInu),
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            changeFee,
+            feeRate,
+            merkleRoot,
+            true,
+            false
+        );
+        factory.setProtocolFeeRate(1000); // 1%
+
+        for (uint256 i = 10; i < 13; i++) {
+            tokenIds.push(i);
+            milady.mint(address(privatePool), i);
+        }
+
+        (uint256 netInputAmount,, uint256 protocolFeeAmount) = privatePool.buyQuote(tokenIds.length * 1e18);
+        deal(address(shibaInu), address(this), netInputAmount);
+        shibaInu.approve(address(privatePool), netInputAmount);
+
+        // act
+        privatePool.buy(tokenIds, tokenWeights, proofs);
+
+        // assert
+        assertEq(shibaInu.balanceOf(address(factory)), protocolFeeAmount, "Should have paid protocol fee");
+        assertGt(protocolFeeAmount, 0, "Should have paid protocol fee");
+    }
+
     function test_TransfersNftsToCaller() public {
         // arrange
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+        (uint256 netInputAmount,,) = privatePool.buyQuote(tokenIds.length * 1e18);
 
         // act
         privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
@@ -111,12 +159,12 @@ contract BuyTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+        (uint256 netInputAmount,,) = privatePool.buyQuote(tokenIds.length * 1e18);
         uint256 royaltyFee = netInputAmount * royaltyFeeRate / 1e18;
         netInputAmount = netInputAmount + royaltyFee;
 
         // act
-        (uint256 returnedNetInputAmount,) = privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
+        (uint256 returnedNetInputAmount,,) = privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
 
         // assert
         assertEq(royaltyRecipient.balance, royaltyFee, "Should have paid royalties");
@@ -143,7 +191,7 @@ contract BuyTest is Fixture {
             milady.mint(address(privatePool), i);
         }
 
-        (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+        (uint256 netInputAmount,,) = privatePool.buyQuote(tokenIds.length * 1e18);
         deal(address(shibaInu), address(this), netInputAmount);
         shibaInu.approve(address(privatePool), netInputAmount);
         uint256 poolBalanceBefore = shibaInu.balanceOf(address(privatePool));
@@ -171,7 +219,7 @@ contract BuyTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+        (uint256 netInputAmount,,) = privatePool.buyQuote(tokenIds.length * 1e18);
         uint256 virtualBaseTokenReservesBefore = privatePool.virtualBaseTokenReserves();
         uint256 virtualNftReservesBefore = privatePool.virtualNftReserves();
 
@@ -195,7 +243,7 @@ contract BuyTest is Fixture {
     function test_RevertIf_CallerSentLessEthThanNetInputAmount() public {
         // arrange
         tokenIds.push(1);
-        (uint256 netInputAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+        (uint256 netInputAmount,,) = privatePool.buyQuote(tokenIds.length * 1e18);
 
         // act
         vm.expectRevert(PrivatePool.InvalidEthAmount.selector);
@@ -241,7 +289,7 @@ contract BuyTest is Fixture {
         tokenIds.push(6);
         tokenWeights.push(2.7e18);
         proofs = generateMerkleProofs(tokenIds, tokenWeights);
-        (uint256 netInputAmount,) = privatePool.buyQuote(2.7e18);
+        (uint256 netInputAmount,,) = privatePool.buyQuote(2.7e18);
 
         // act
         privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
@@ -269,7 +317,7 @@ contract BuyTest is Fixture {
         tokenWeights.push(2.7e18);
         proofs = generateMerkleProofs(tokenIds, tokenWeights);
         tokenWeights[0] = 2.11e18; // set to wrong weight
-        (uint256 netInputAmount,) = privatePool.buyQuote(2.7e18);
+        (uint256 netInputAmount,,) = privatePool.buyQuote(2.7e18);
 
         // act
         vm.expectRevert(PrivatePool.InvalidMerkleProof.selector);

@@ -45,7 +45,7 @@ contract QuotesTest is Fixture {
         uint256 feeAmount = inputAmount * 2 / 100; // 2%
 
         // act
-        (uint256 returnedNetInputAmount, uint256 returnedFeeAmount) = privatePool.buyQuote(outputAmount);
+        (uint256 returnedNetInputAmount, uint256 returnedFeeAmount,) = privatePool.buyQuote(outputAmount);
 
         // assert
         assertEq(returnedNetInputAmount, inputAmount + feeAmount, "Should have returned netInputAmount");
@@ -65,7 +65,7 @@ contract QuotesTest is Fixture {
         uint256 feeAmount = inputAmount * feeRate / 1e4;
 
         // act
-        (uint256 returnedNetInputAmount, uint256 returnedFeeAmount) = privatePool.buyQuote(outputAmount);
+        (uint256 returnedNetInputAmount, uint256 returnedFeeAmount,) = privatePool.buyQuote(outputAmount);
 
         // assert
         assertEq(returnedNetInputAmount, inputAmount + feeAmount + 1, "Should have returned netInputAmount");
@@ -80,7 +80,7 @@ contract QuotesTest is Fixture {
         uint256 feeAmount = outputAmount * feeRate / 1e4; // 2%
 
         // act
-        (uint256 returnedNetOutputAmount, uint256 returnedFeeAmount) = privatePool.sellQuote(inputAmount);
+        (uint256 returnedNetOutputAmount, uint256 returnedFeeAmount,) = privatePool.sellQuote(inputAmount);
 
         // assert
         assertEq(returnedNetOutputAmount, outputAmount - feeAmount, "Should have returned netOutputAmount");

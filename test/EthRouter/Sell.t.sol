@@ -49,7 +49,7 @@ contract SellTest is Fixture {
             publicPoolProofs: publicPoolProofs
         });
 
-        (uint256 baseTokenAmount,) = privatePool.sellQuote(tokenIds.length * 1e18);
+        (uint256 baseTokenAmount,,) = privatePool.sellQuote(tokenIds.length * 1e18);
         return (sell, baseTokenAmount);
     }
 

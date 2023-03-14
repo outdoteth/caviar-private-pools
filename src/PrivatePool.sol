@@ -10,8 +10,10 @@ import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
 import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
 
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
+import {Factory} from "./Factory.sol";
 
 contract PrivatePool is ERC721TokenReceiver {
+    using SafeTransferLib for address payable;
     using SafeTransferLib for address;
     using SafeTransferLib for ERC20;
 
@@ -82,13 +84,13 @@ contract PrivatePool is ERC721TokenReceiver {
     address public immutable stolenNftOracle;
 
     /// @notice The factory contract that created this pool.
-    address public immutable factory;
+    address payable public immutable factory;
 
     /// @notice The royalty registry from manifold.xyz.
     address public immutable royaltyRegistry;
 
     modifier onlyOwner() virtual {
-        if (msg.sender != ERC721(factory).ownerOf(uint160(address(this)))) {
+        if (msg.sender != Factory(factory).ownerOf(uint160(address(this)))) {
             revert Unauthorized();
         }
         _;
@@ -97,7 +99,7 @@ contract PrivatePool is ERC721TokenReceiver {
     receive() external payable {}
 
     constructor(address _factory, address _royaltyRegistry, address _stolenNftOracle) {
-        factory = _factory;
+        factory = payable(_factory);
         royaltyRegistry = _royaltyRegistry;
         stolenNftOracle = _stolenNftOracle;
     }
@@ -167,7 +169,7 @@ contract PrivatePool is ERC721TokenReceiver {
     function buy(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, MerkleMultiProof calldata proof)
         public
         payable
-        returns (uint256 netInputAmount, uint256 feeAmount)
+        returns (uint256 netInputAmount, uint256 feeAmount, uint256 protocolFeeAmount)
     {
         // ~~~ Checks ~~~ //
 
@@ -175,29 +177,21 @@ contract PrivatePool is ERC721TokenReceiver {
         uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
 
         // calculate the required net input amount and fee amount
-        (netInputAmount, feeAmount) = buyQuote(weightSum);
+        (netInputAmount, feeAmount, protocolFeeAmount) = buyQuote(weightSum);
 
-        // ensure the caller sent enough ETH if the base token is ETH or that the caller sent 0 ETH if the base token is
-        // not ETH
-        if ((msg.value < netInputAmount && baseToken == address(0)) || (baseToken != address(0) && msg.value > 0)) {
-            revert InvalidEthAmount();
-        }
+        // check that the caller sent 0 ETH if the base token is not ETH
+        if (baseToken != address(0) && msg.value > 0) revert InvalidEthAmount();
 
         // ~~~ Effects ~~~ //
 
         // update the virtual reserves
-        virtualBaseTokenReserves += uint128(netInputAmount - feeAmount);
+        virtualBaseTokenReserves += uint128(netInputAmount - feeAmount - protocolFeeAmount);
         virtualNftReserves -= uint128(weightSum);
 
         // ~~~ Interactions ~~~ //
 
-        // transfer the base token from the caller if base token is not ETH
-        if (baseToken != address(0)) {
-            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), netInputAmount);
-        }
-
         // calculate the sale price (assume it's the same for each NFT even if weights differ)
-        uint256 salePrice = (netInputAmount - feeAmount) / tokenIds.length;
+        uint256 salePrice = (netInputAmount - feeAmount - protocolFeeAmount) / tokenIds.length;
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
             // transfer the NFT to the caller
@@ -212,9 +206,21 @@ contract PrivatePool is ERC721TokenReceiver {
             }
         }
 
-        // if the base token is ETH then refund any excess ETH to the caller
-        if (baseToken == address(0) && msg.value > netInputAmount) {
-            msg.sender.safeTransferETH(msg.value - netInputAmount);
+        if (baseToken != address(0)) {
+            // transfer the base token from the caller to the contract
+            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), netInputAmount);
+
+            // if the protocol fee is set then pay the protocol fee
+            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(address(factory), protocolFeeAmount);
+        } else {
+            // check that the caller sent enough ETH to cover the net required input
+            if (msg.value < netInputAmount) revert InvalidEthAmount();
+
+            // if the protocol fee is set then pay the protocol fee
+            if (protocolFeeAmount > 0) factory.safeTransferETH(protocolFeeAmount);
+
+            // refund any excess ETH to the caller
+            if (msg.value > netInputAmount) msg.sender.safeTransferETH(msg.value - netInputAmount);
         }
 
         // emit the buy event
@@ -235,15 +241,15 @@ contract PrivatePool is ERC721TokenReceiver {
         uint256[] calldata tokenIds,
         uint256[] calldata tokenWeights,
         MerkleMultiProof calldata proof,
-        IStolenNftOracle.Message[] calldata stolenNftProofs
-    ) public returns (uint256 netOutputAmount, uint256 feeAmount) {
+        IStolenNftOracle.Message[] memory stolenNftProofs // put in memory to avoid stack too deep error
+    ) public returns (uint256 netOutputAmount, uint256 feeAmount, uint256 protocolFeeAmount) {
         // ~~~ Checks ~~~ //
 
         // calculate the sum of weights of the NFTs to sell
         uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
 
         // calculate the net output amount and fee amount
-        (netOutputAmount, feeAmount) = sellQuote(weightSum);
+        (netOutputAmount, feeAmount, protocolFeeAmount) = sellQuote(weightSum);
 
         //  check the nfts are not stolen
         if (useStolenNftOracle) {
@@ -253,7 +259,7 @@ contract PrivatePool is ERC721TokenReceiver {
         // ~~~ Effects ~~~ //
 
         // update the virtual reserves
-        virtualBaseTokenReserves -= uint128(netOutputAmount - feeAmount);
+        virtualBaseTokenReserves -= uint128(netOutputAmount + protocolFeeAmount + feeAmount);
         virtualNftReserves += uint128(weightSum);
 
         // ~~~ Interactions ~~~ //
@@ -278,8 +284,14 @@ contract PrivatePool is ERC721TokenReceiver {
         // token is not ETH
         if (baseToken == address(0)) {
             msg.sender.safeTransferETH(netOutputAmount);
+
+            // if the protocol fee is set then pay the protocol fee
+            if (protocolFeeAmount > 0) factory.safeTransferETH(protocolFeeAmount);
         } else {
             ERC20(baseToken).transfer(msg.sender, netOutputAmount);
+
+            // if the protocol fee is set then pay the protocol fee
+            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(address(factory), protocolFeeAmount);
         }
 
         // emit the sell event
@@ -499,13 +511,18 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param outputAmount The amount of NFTs to buy multiplied by 1e18.
     /// @return netInputAmount The required input amount of base tokens inclusive of the fee.
     /// @return feeAmount The fee amount.
-    function buyQuote(uint256 outputAmount) public view returns (uint256 netInputAmount, uint256 feeAmount) {
+    function buyQuote(uint256 outputAmount)
+        public
+        view
+        returns (uint256 netInputAmount, uint256 feeAmount, uint256 protocolFeeAmount)
+    {
         // calculate the input amount based on xy=k invariant and round up by 1 wei
         uint256 inputAmount =
             FixedPointMathLib.mulDivUp(outputAmount, virtualBaseTokenReserves, (virtualNftReserves - outputAmount));
 
+        protocolFeeAmount = inputAmount * Factory(factory).protocolFeeRate() / 10_000;
         feeAmount = inputAmount * feeRate / 10_000;
-        netInputAmount = inputAmount + feeAmount;
+        netInputAmount = inputAmount + feeAmount + protocolFeeAmount;
     }
 
     /// @notice Returns the output amount of selling a given amount of NFTs inclusive of the fee which is dependent on
@@ -513,12 +530,17 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param inputAmount The amount of NFTs to sell multiplied by 1e18.
     /// @return netOutputAmount The output amount of base tokens inclusive of the fee.
     /// @return feeAmount The fee amount.
-    function sellQuote(uint256 inputAmount) public view returns (uint256 netOutputAmount, uint256 feeAmount) {
+    function sellQuote(uint256 inputAmount)
+        public
+        view
+        returns (uint256 netOutputAmount, uint256 feeAmount, uint256 protocolFeeAmount)
+    {
         // calculate the output amount based on xy=k invariant
         uint256 outputAmount = inputAmount * virtualBaseTokenReserves / (virtualNftReserves + inputAmount);
 
+        protocolFeeAmount = outputAmount * Factory(factory).protocolFeeRate() / 10_000;
         feeAmount = outputAmount * feeRate / 10_000;
-        netOutputAmount = outputAmount - feeAmount;
+        netOutputAmount = outputAmount - feeAmount - protocolFeeAmount;
     }
 
     /// @notice Returns the fee required to change a given amount of NFTs. The fee is based on the current changeFee

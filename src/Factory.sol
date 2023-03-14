@@ -16,6 +16,7 @@ contract Factory is ERC721, Owned {
     using SafeTransferLib for address;
 
     event Create(address indexed privatePool, uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
+    event Withdraw(address indexed token, uint256 indexed amount);
 
     /// @notice The address of the private pool implementation that proxies point to.
     address public privatePoolImplementation;
@@ -23,7 +24,12 @@ contract Factory is ERC721, Owned {
     /// @notice Helper contract that constructs the private pool metadata svg and json for each pool NFT.
     address public privatePoolMetadata;
 
+    /// @notice The protocol fee that is taken on each buy/sell/change. It's in basis points: 3_500 = 3.5%.
+    uint16 public protocolFeeRate;
+
     constructor() ERC721("Caviar Private Pools", "POOL") Owned(msg.sender) {}
+
+    receive() external payable {}
 
     /// @notice Creates a new private pool using the minimal proxy pattern that points to the private pool
     /// implementation. The caller must approve the factory to transfer the NFTs that will be deposited to the pool.
@@ -50,7 +56,7 @@ contract Factory is ERC721, Owned {
         bool _useStolenNftOracle,
         bool _payRoyalties,
         bytes32 _salt,
-        uint256[] memory tokenIds,
+        uint256[] memory tokenIds, // put in memory to avoid stack too deep error
         uint256 baseTokenAmount
     ) public payable returns (PrivatePool privatePool) {
         // check that the msg.value is equal to the base token amount if the base token is ETH or the msg.value is equal
@@ -117,6 +123,25 @@ contract Factory is ERC721, Owned {
     /// @param _privatePoolImplementation The private pool implementation contract.
     function setPrivatePoolImplementation(address _privatePoolImplementation) public onlyOwner {
         privatePoolImplementation = _privatePoolImplementation;
+    }
+
+    /// @notice Sets the protocol fee that is taken on each buy/sell/change. It's in basis points: 3_500 = 3.5%.
+    /// @param _protocolFeeRate The protocol fee.
+    function setProtocolFeeRate(uint16 _protocolFeeRate) public onlyOwner {
+        protocolFeeRate = _protocolFeeRate;
+    }
+
+    /// @notice Withdraws protocol fees from the factory.
+    /// @param token The token to withdraw.
+    /// @param amount The amount to withdraw.
+    function withdraw(address token, uint256 amount) public onlyOwner {
+        if (token == address(0)) {
+            msg.sender.safeTransferETH(amount);
+        } else {
+            ERC20(token).transfer(msg.sender, amount);
+        }
+
+        emit Withdraw(token, amount);
     }
 
     /// @notice Returns the token URI for a given token id.

@@ -44,10 +44,10 @@ contract SellTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netOutputAmount, uint256 feeAmount) = privatePool.sellQuote(tokenIds.length * 1e18);
+        (uint256 netOutputAmount, uint256 feeAmount,) = privatePool.sellQuote(tokenIds.length * 1e18);
 
         // act
-        (uint256 returnedNetOutputAmount, uint256 returnedFeeAmount) =
+        (uint256 returnedNetOutputAmount, uint256 returnedFeeAmount,) =
             privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);
 
         // assert
@@ -60,7 +60,7 @@ contract SellTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netOutputAmount, uint256 feeAmount) = privatePool.sellQuote(tokenIds.length * 1e18);
+        (uint256 netOutputAmount, uint256 feeAmount,) = privatePool.sellQuote(tokenIds.length * 1e18);
 
         // act
         vm.expectEmit(true, true, true, true);
@@ -89,7 +89,7 @@ contract SellTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netOutputAmount,) = privatePool.sellQuote(tokenIds.length * 1e18);
+        (uint256 netOutputAmount,,) = privatePool.sellQuote(tokenIds.length * 1e18);
 
         // act
         privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);
@@ -103,7 +103,7 @@ contract SellTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netOutputAmount,) = privatePool.sellQuote(tokenIds.length * 1e18);
+        (uint256 netOutputAmount,,) = privatePool.sellQuote(tokenIds.length * 1e18);
         uint256 balanceBefore = address(this).balance;
 
         // act
@@ -111,6 +111,54 @@ contract SellTest is Fixture {
 
         // assert
         assertEq(address(this).balance - balanceBefore, netOutputAmount, "Should have transferred eth to caller");
+    }
+
+    function test_TransfersProtocolFee() public {
+        // arrange
+        factory.setProtocolFeeRate(1000); // 1%
+        tokenIds.push(1);
+        tokenIds.push(2);
+        tokenIds.push(3);
+        (uint256 netOutputAmount,, uint256 protocolFeeAmount) = privatePool.sellQuote(tokenIds.length * 1e18);
+
+        // act
+        privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);
+
+        // assert
+        assertEq(address(factory).balance, protocolFeeAmount, "Should have transferred protocol fee to factory");
+        assertGt(address(factory).balance, 0, "Should have transferred protocol fee to factory");
+    }
+
+    function test_TransfersBaseTokenProtocolFee() public {
+        // arrange
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
+        privatePool.initialize(
+            address(shibaInu),
+            nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            changeFee,
+            feeRate,
+            merkleRoot,
+            true,
+            false
+        );
+        factory.setProtocolFeeRate(1000); // 1%
+        tokenIds.push(1);
+        tokenIds.push(2);
+        tokenIds.push(3);
+        milady.setApprovalForAll(address(privatePool), true);
+        (uint256 netOutputAmount,, uint256 protocolFeeAmount) = privatePool.sellQuote(tokenIds.length * 1e18);
+        deal(address(shibaInu), address(privatePool), netOutputAmount + protocolFeeAmount);
+
+        // act
+        privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);
+
+        // assert
+        assertEq(
+            shibaInu.balanceOf(address(factory)), protocolFeeAmount, "Should have transferred protocol fee to factory"
+        );
+        assertGt(shibaInu.balanceOf(address(factory)), 0, "Should have transferred protocol fee to factory");
     }
 
     function test_TransfersNftsToPool() public {
@@ -160,7 +208,7 @@ contract SellTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netOutputAmount, uint256 feeAmount) = privatePool.sellQuote(tokenIds.length * 1e18);
+        (uint256 netOutputAmount, uint256 feeAmount,) = privatePool.sellQuote(tokenIds.length * 1e18);
 
         // act
         privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);
@@ -192,12 +240,12 @@ contract SellTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netOutputAmount,) = privatePool.sellQuote(tokenIds.length * 1e18);
+        (uint256 netOutputAmount,,) = privatePool.sellQuote(tokenIds.length * 1e18);
         uint256 royaltyFee = netOutputAmount * royaltyFeeRate / 1e18;
         netOutputAmount = netOutputAmount - royaltyFee;
 
         // act
-        (uint256 returnedNetOutputAmount,) = privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);
+        (uint256 returnedNetOutputAmount,,) = privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);
 
         // assert
         assertEq(royaltyRecipient.balance, royaltyFee, "Should have paid royalty fee");
@@ -227,7 +275,7 @@ contract SellTest is Fixture {
         tokenIds.push(3);
         tokenWeights.push(3.1e18);
         proofs = generateMerkleProofs(tokenIds, tokenWeights);
-        (uint256 netOutputAmount,) = privatePool.sellQuote(1.1e18 + 3.1e18);
+        (uint256 netOutputAmount,,) = privatePool.sellQuote(1.1e18 + 3.1e18);
         uint256 balanceBefore = address(this).balance;
 
         // act

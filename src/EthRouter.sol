@@ -79,18 +79,13 @@ contract EthRouter is ERC721TokenReceiver {
             uint256 netInputAmount;
             if (buys[i].isPublicPool) {
                 // execute the buy against a public pool
-                netInputAmount = Pair(buys[i].pool).nftBuy{value: buys[i].baseTokenAmount}(
-                    buys[i].tokenIds, buys[i].baseTokenAmount, 0
-                );
+                Pair(buys[i].pool).nftBuy{value: buys[i].baseTokenAmount}(buys[i].tokenIds, buys[i].baseTokenAmount, 0);
             } else {
                 // execute the buy against a private pool
-                (netInputAmount,) = PrivatePool(buys[i].pool).buy{value: buys[i].baseTokenAmount}(
+                PrivatePool(buys[i].pool).buy{value: buys[i].baseTokenAmount}(
                     buys[i].tokenIds, buys[i].tokenWeights, buys[i].proof
                 );
             }
-
-            // calculate the sale price of each NFT
-            uint256 salePrice = netInputAmount / buys[i].tokenIds.length;
 
             for (uint256 j = 0; j < buys[i].tokenIds.length; j++) {
                 // transfer the NFT to the caller
@@ -125,10 +120,9 @@ contract EthRouter is ERC721TokenReceiver {
             // approve the pair to transfer NFTs from the router
             ERC721(sells[i].nft).setApprovalForAll(sells[i].pool, true);
 
-            uint256 netOutputAmount;
             if (sells[i].isPublicPool) {
                 // exceute the sell against a public pool
-                netOutputAmount = Pair(sells[i].pool).nftSell(
+                Pair(sells[i].pool).nftSell(
                     sells[i].tokenIds,
                     0,
                     0,
@@ -139,7 +133,7 @@ contract EthRouter is ERC721TokenReceiver {
                 );
             } else {
                 // execute the sell against a private pool
-                (netOutputAmount,) = PrivatePool(sells[i].pool).sell(
+                PrivatePool(sells[i].pool).sell(
                     sells[i].tokenIds, sells[i].tokenWeights, sells[i].proof, sells[i].stolenNftProofs
                 );
             }

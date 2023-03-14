@@ -7,10 +7,12 @@ contract ConstructorTest is Fixture {
     function test_InitsParameters() public {
         // arrange
         address privatePoolImplementation = address(0x123);
+        uint16 protocolFeeRate = 10;
 
         // act
         factory = new Factory();
         factory.setPrivatePoolImplementation(address(privatePoolImplementation));
+        factory.setProtocolFeeRate(protocolFeeRate);
 
         // assert
         assertEq(
@@ -18,5 +20,7 @@ contract ConstructorTest is Fixture {
             privatePoolImplementation,
             "Should have initialized privatePoolImplementation"
         );
+
+        assertEq(factory.protocolFeeRate(), protocolFeeRate, "Should have initialized protocolFeeRate");
     }
 }

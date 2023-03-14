@@ -44,7 +44,7 @@ contract BuyTest is Fixture {
 
         totalTokens += 2;
 
-        (uint256 baseTokenAmount,) = privatePool.buyQuote(tokenIds.length * 1e18);
+        (uint256 baseTokenAmount,,) = privatePool.buyQuote(tokenIds.length * 1e18);
         buys.push(
             EthRouter.Buy({
                 pool: payable(address(privatePool)),
