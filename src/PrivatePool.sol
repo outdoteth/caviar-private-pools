@@ -267,7 +267,7 @@ contract PrivatePool is ERC721TokenReceiver {
         // ~~~ Interactions ~~~ //
 
         // calculate the sale price (assume it's the same for each NFT even if weights differ)
-        uint256 salePrice = (netOutputAmount + feeAmount) / tokenIds.length;
+        uint256 salePrice = (netOutputAmount + feeAmount + protocolFeeAmount) / tokenIds.length;
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
             // transfer each nft from the caller

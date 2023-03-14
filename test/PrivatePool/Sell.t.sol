@@ -16,7 +16,7 @@ contract SellTest is Fixture {
     uint128 virtualBaseTokenReserves = 100e18;
     uint128 virtualNftReserves = 5e18;
     uint56 changeFee = 123908;
-    uint16 feeRate = 0;
+    uint16 feeRate = 100;
     bytes32 merkleRoot = bytes32(0);
     address owner = address(this);
 
@@ -219,7 +219,7 @@ contract SellTest is Fixture {
         // assert
         assertEq(
             privatePool.virtualBaseTokenReserves(),
-            virtualBaseTokenReserves - (netOutputAmount - feeAmount),
+            virtualBaseTokenReserves - (netOutputAmount + feeAmount),
             "Should have updated virtualBaseTokenReserves"
         );
         assertEq(
@@ -243,8 +243,9 @@ contract SellTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netOutputAmount,,) = privatePool.sellQuote(tokenIds.length * 1e18);
-        uint256 royaltyFee = netOutputAmount * royaltyFeeRate / 1e18;
+        (uint256 netOutputAmount, uint256 feeAmount, uint256 protocolFeeAmount) =
+            privatePool.sellQuote(tokenIds.length * 1e18);
+        uint256 royaltyFee = (netOutputAmount + protocolFeeAmount + feeAmount) * royaltyFeeRate / 1e18;
         netOutputAmount = netOutputAmount - royaltyFee;
 
         // act
