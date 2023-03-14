@@ -9,7 +9,7 @@ contract ChangeTest is Fixture {
     EthRouter.Change[] public changes;
 
     function setUp() public {
-        privatePool.initialize(address(0), address(milady), 10e18, 10e18, 0, 1999, bytes32(0), true, false);
+        privatePool.initialize(address(0), address(milady), 10e18, 10e18, 50000, 1999, bytes32(0), true, false);
 
         for (uint256 i = 0; i < 5; i++) {
             milady.mint(address(privatePool), i);
@@ -46,7 +46,7 @@ contract ChangeTest is Fixture {
             })
         );
 
-        uint256 changeFee = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
+        (uint256 changeFee,) = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
         uint256 balanceBefore = address(this).balance;
 
         // act
@@ -80,7 +80,7 @@ contract ChangeTest is Fixture {
             })
         );
 
-        uint256 changeFee = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
+        (uint256 changeFee,) = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
 
         // act
         ethRouter.change{value: changeFee}(changes, 0);
@@ -119,7 +119,7 @@ contract ChangeTest is Fixture {
             })
         );
 
-        uint256 changeFee = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
+        (uint256 changeFee,) = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
 
         // act
         vm.expectCall(

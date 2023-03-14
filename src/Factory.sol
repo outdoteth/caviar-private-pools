@@ -131,7 +131,7 @@ contract Factory is ERC721, Owned {
         protocolFeeRate = _protocolFeeRate;
     }
 
-    /// @notice Withdraws protocol fees from the factory.
+    /// @notice Withdraws the earned protocol fees.
     /// @param token The token to withdraw.
     /// @param amount The amount to withdraw.
     function withdraw(address token, uint256 amount) public onlyOwner {

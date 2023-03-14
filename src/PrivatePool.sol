@@ -26,12 +26,14 @@ contract PrivatePool is ERC721TokenReceiver {
 
     // forgefmt: disable-next-item
     event Initialize(address indexed baseToken, address indexed nft, uint128 virtualBaseTokenReserves, uint128 virtualNftReserves, uint56 changeFee, uint16 feeRate, bytes32 merkleRoot, bool useStolenNftOracle, bool payRoyalties);
-    event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount);
-    event Sell(uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount);
+    // forgefmt: disable-next-item
+    event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount, uint256 protocolFeeAmount);
+    // forgefmt: disable-next-item
+    event Sell(uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount, uint256 protocolFeeAmount);
     event Deposit(uint256[] tokenIds, uint256 baseTokenAmount);
     event Withdraw(address indexed nft, uint256[] tokenIds, address token, uint256 amount);
     // forgefmt: disable-next-item
-    event Change(uint256[] inputTokenIds, uint256[] inputTokenWeights, uint256[] outputTokenIds, uint256[] outputTokenWeights, uint256 feeAmount);
+    event Change(uint256[] inputTokenIds, uint256[] inputTokenWeights, uint256[] outputTokenIds, uint256[] outputTokenWeights, uint256 feeAmount, uint256 protocolFeeAmount);
     event SetVirtualReserves(uint128 virtualBaseTokenReserves, uint128 virtualNftReserves);
     event SetMerkleRoot(bytes32 merkleRoot);
     event SetFeeRate(uint16 feeRate);
@@ -224,7 +226,7 @@ contract PrivatePool is ERC721TokenReceiver {
         }
 
         // emit the buy event
-        emit Buy(tokenIds, tokenWeights, netInputAmount, feeAmount);
+        emit Buy(tokenIds, tokenWeights, netInputAmount, feeAmount, protocolFeeAmount);
     }
 
     /// @notice Sells NFTs into the pool and transfers base tokens to the caller. NFTs are transferred from the caller
@@ -295,7 +297,7 @@ contract PrivatePool is ERC721TokenReceiver {
         }
 
         // emit the sell event
-        emit Sell(tokenIds, tokenWeights, netOutputAmount, feeAmount);
+        emit Sell(tokenIds, tokenWeights, netOutputAmount, feeAmount, protocolFeeAmount);
     }
 
     /// @notice Deposits base tokens and NFTs into the pool. The caller must approve the pool to transfer their NFTs and
@@ -366,14 +368,17 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param outputTokenWeights The weights of the NFTs to receive.
     /// @param outputProof The merkle proof for the weights of each NFT to receive.
     function change(
-        uint256[] calldata inputTokenIds,
-        uint256[] calldata inputTokenWeights,
-        MerkleMultiProof calldata inputProof,
-        uint256[] calldata outputTokenIds,
-        uint256[] calldata outputTokenWeights,
-        MerkleMultiProof calldata outputProof
-    ) public payable returns (uint256 feeAmount) {
+        uint256[] memory inputTokenIds,
+        uint256[] memory inputTokenWeights,
+        MerkleMultiProof memory inputProof,
+        uint256[] memory outputTokenIds,
+        uint256[] memory outputTokenWeights,
+        MerkleMultiProof memory outputProof
+    ) public payable returns (uint256 feeAmount, uint256 protocolFeeAmount) {
         // ~~~ Checks ~~~ //
+
+        // check that the caller sent 0 ETH if base token is not ETH
+        if (baseToken != address(0) && msg.value > 0) revert InvalidEthAmount();
 
         // fix stack too deep
         {
@@ -387,19 +392,28 @@ contract PrivatePool is ERC721TokenReceiver {
             if (inputWeightSum < outputWeightSum) revert InsufficientInputWeight();
 
             // calculate the fee amount
-            feeAmount = changeFeeQuote(inputWeightSum);
+            (feeAmount, protocolFeeAmount) = changeFeeQuote(inputWeightSum);
         }
 
         // ~~~ Interactions ~~~ //
 
-        // check caller sent enough ETH if base token is ETH or that the caller sent 0 ETH if base token is not ETH
-        if ((baseToken == address(0) && msg.value < feeAmount) || (baseToken != address(0) && msg.value > 0)) {
-            revert InvalidEthAmount();
-        }
-
         if (baseToken != address(0)) {
             // transfer the fee amount of base tokens from the caller
             ERC20(baseToken).safeTransferFrom(msg.sender, address(this), feeAmount);
+
+            // if the protocol fee is non-zero then transfer the protocol fee to the factory
+            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransferFrom(msg.sender, factory, protocolFeeAmount);
+        } else {
+            // check that the caller sent enough ETH to cover the fee amount and protocol fee
+            if (msg.value < feeAmount + protocolFeeAmount) revert InvalidEthAmount();
+
+            // if the protocol fee is non-zero then transfer the protocol fee to the factory
+            if (protocolFeeAmount > 0) factory.safeTransferETH(protocolFeeAmount);
+
+            // refund any excess ETH to the caller
+            if (msg.value > feeAmount + protocolFeeAmount) {
+                msg.sender.safeTransferETH(msg.value - feeAmount - protocolFeeAmount);
+            }
         }
 
         // transfer the input nfts from the caller
@@ -412,13 +426,8 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC721(nft).safeTransferFrom(address(this), msg.sender, outputTokenIds[i]);
         }
 
-        // if the base token is ETH then refund any excess ETH to the caller
-        if (baseToken == address(0) && msg.value > feeAmount) {
-            msg.sender.safeTransferETH(msg.value - feeAmount);
-        }
-
         // emit the change event
-        emit Change(inputTokenIds, inputTokenWeights, outputTokenIds, outputTokenWeights, feeAmount);
+        emit Change(inputTokenIds, inputTokenWeights, outputTokenIds, outputTokenWeights, feeAmount, protocolFeeAmount);
     }
 
     /// @notice Executes a transaction from the pool account to a target contract. The caller must be the owner of the
@@ -547,11 +556,14 @@ contract PrivatePool is ERC721TokenReceiver {
     /// (which contains 4 decimals of precision) multiplied by some exponent depending on the base token decimals.
     /// @param inputAmount The amount of NFTs to change multiplied by 1e18.
     /// @return feeAmount The fee amount.
-    function changeFeeQuote(uint256 inputAmount) public view returns (uint256 feeAmount) {
+    /// @return protocolFeeAmount The protocol fee amount.
+    function changeFeeQuote(uint256 inputAmount) public view returns (uint256 feeAmount, uint256 protocolFeeAmount) {
         // multiply the changeFee to get the fee per NFT
         uint256 exponent = baseToken == address(0) ? 18 - 4 : ERC20(baseToken).decimals() - 4;
         uint256 feePerNft = changeFee * 10 ** exponent;
+
         feeAmount = inputAmount * feePerNft / 1e18;
+        protocolFeeAmount = feeAmount * Factory(factory).protocolFeeRate() / 10_000;
     }
 
     /// @notice Returns the price of the pool to 18 decimals of accuracy.
@@ -568,9 +580,9 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param proof The merkle proof for the weights of each NFT.
     /// @return sum The sum of the weights of each NFT.
     function sumWeightsAndValidateProof(
-        uint256[] calldata tokenIds,
-        uint256[] calldata tokenWeights,
-        MerkleMultiProof calldata proof
+        uint256[] memory tokenIds,
+        uint256[] memory tokenWeights,
+        MerkleMultiProof memory proof
     ) public view returns (uint256) {
         // if the merkle root is not set then set the weight of each nft to be 1e18
         if (merkleRoot == bytes32(0)) {

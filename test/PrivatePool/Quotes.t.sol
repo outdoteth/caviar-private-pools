@@ -95,7 +95,7 @@ contract QuotesTest is Fixture {
         uint256 feeAmount = 0.1239 ether;
 
         // act
-        uint256 returnedFeeAmount = privatePool.changeFeeQuote(inputAmount);
+        (uint256 returnedFeeAmount, uint256 protocolFeeAmount) = privatePool.changeFeeQuote(inputAmount);
 
         // assert
         assertEq(returnedFeeAmount, feeAmount, "Should have returned feeAmount");
@@ -112,7 +112,7 @@ contract QuotesTest is Fixture {
         );
 
         // act
-        uint256 returnedFeeAmount = privatePool.changeFeeQuote(inputAmount);
+        (uint256 returnedFeeAmount, uint256 protocolFeeAmount) = privatePool.changeFeeQuote(inputAmount);
 
         // assert
         assertEq(returnedFeeAmount, feeAmount, "Should have returned feeAmount");
