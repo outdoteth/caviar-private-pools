@@ -28,8 +28,9 @@ contract BuyTest is Fixture {
             100e18,
             10e18,
             200,
+            100,
             bytes32(0),
-            address(stolenNftOracle),
+            true,
             false,
             bytes32(address(this).balance), // random between each call to _addBuy
             empty,

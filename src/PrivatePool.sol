@@ -13,6 +13,7 @@ import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 
 contract PrivatePool is ERC721TokenReceiver {
     using SafeTransferLib for address;
+    using SafeTransferLib for ERC20;
 
     /// @notice Merkle proof input for a sparse merkle multi proof. It can be generated with a library like:
     /// https://github.com/OpenZeppelin/merkle-tree#treegetmultiproof
@@ -22,7 +23,7 @@ contract PrivatePool is ERC721TokenReceiver {
     }
 
     // forgefmt: disable-next-item
-    event Initialize(address indexed baseToken, address indexed nft, uint128 virtualBaseTokenReserves, uint128 virtualNftReserves, uint16 feeRate, bytes32 merkleRoot, address stolenNftOracle, bool payRoyalties);
+    event Initialize(address indexed baseToken, address indexed nft, uint128 virtualBaseTokenReserves, uint128 virtualNftReserves, uint56 changeFee, uint16 feeRate, bytes32 merkleRoot, bool useStolenNftOracle, bool payRoyalties);
     event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount);
     event Sell(uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount);
     event Deposit(uint256[] tokenIds, uint256 baseTokenAmount);
@@ -32,7 +33,7 @@ contract PrivatePool is ERC721TokenReceiver {
     event SetVirtualReserves(uint128 virtualBaseTokenReserves, uint128 virtualNftReserves);
     event SetMerkleRoot(bytes32 merkleRoot);
     event SetFeeRate(uint16 feeRate);
-    event SetStolenNftOracle(address stolenNftOracle);
+    event SetUseStolenNftOracle(bool useStolenNftOracle);
     event SetPayRoyalties(bool payRoyalties);
 
     error AlreadyInitialized();
@@ -45,7 +46,10 @@ contract PrivatePool is ERC721TokenReceiver {
     address public baseToken;
     address public nft;
 
-    /// @notice The fee rate (in basis points) 2_000 = 2%
+    /// @notice The change/flash fee to 4 decimals of precision. For example, 0.0025 ETH = 25. 500 USDC = 5_000_000.
+    uint56 public changeFee;
+
+    /// @notice The buy/sell fee rate (in basis points) 2_000 = 2%
     uint16 public feeRate;
 
     /// @notice Whether or not the pool has been initialized.
@@ -53,6 +57,9 @@ contract PrivatePool is ERC721TokenReceiver {
 
     /// @notice Whether or not the pool pays royalties to the NFT creator on each trade.
     bool public payRoyalties;
+
+    /// @notice Whether or not the pool uses the stolen NFT oracle to check if an NFT is stolen.
+    bool public useStolenNftOracle;
 
     /// @notice The virtual base token reserves used in the xy=k invariant. Changing this will change the liquidity
     /// depth and price of the pool.
@@ -72,7 +79,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
     /// @notice The NFT oracle to check if an NFT is stolen. If it's set to be address(0) then the stolen NFT check is
     /// skipped.
-    address public stolenNftOracle;
+    address public immutable stolenNftOracle;
 
     /// @notice The factory contract that created this pool.
     address public immutable factory;
@@ -89,9 +96,10 @@ contract PrivatePool is ERC721TokenReceiver {
 
     receive() external payable {}
 
-    constructor(address _factory, address _royaltyRegistry) {
+    constructor(address _factory, address _royaltyRegistry, address _stolenNftOracle) {
         factory = _factory;
         royaltyRegistry = _royaltyRegistry;
+        stolenNftOracle = _stolenNftOracle;
     }
 
     /// @notice Initializes the private pool and sets the initial parameters. Should only be called once by the factory.
@@ -101,15 +109,16 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param _virtualNftReserves The virtual NFT reserves
     /// @param _feeRate The fee rate (in basis points) 2_000 = 2%
     /// @param _merkleRoot The merkle root
-    /// @param _stolenNftOracle The address of the stolen NFT oracle
+    /// @param _useStolenNftOracle Whether or not the pool uses the stolen NFT oracle to check if an NFT is stolen
     function initialize(
         address _baseToken,
         address _nft,
         uint128 _virtualBaseTokenReserves,
         uint128 _virtualNftReserves,
+        uint56 _changeFee,
         uint16 _feeRate,
         bytes32 _merkleRoot,
-        address _stolenNftOracle,
+        bool _useStolenNftOracle,
         bool _payRoyalties
     ) public {
         // prevent duplicate initialization
@@ -123,9 +132,10 @@ contract PrivatePool is ERC721TokenReceiver {
         nft = _nft;
         virtualBaseTokenReserves = _virtualBaseTokenReserves;
         virtualNftReserves = _virtualNftReserves;
+        changeFee = _changeFee;
         feeRate = _feeRate;
         merkleRoot = _merkleRoot;
-        stolenNftOracle = _stolenNftOracle;
+        useStolenNftOracle = _useStolenNftOracle;
         payRoyalties = _payRoyalties;
 
         // mark the pool as initialized
@@ -137,9 +147,10 @@ contract PrivatePool is ERC721TokenReceiver {
             _nft,
             _virtualBaseTokenReserves,
             _virtualNftReserves,
+            _changeFee,
             _feeRate,
             _merkleRoot,
-            _stolenNftOracle,
+            _useStolenNftOracle,
             _payRoyalties
         );
     }
@@ -182,7 +193,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // transfer the base token from the caller if base token is not ETH
         if (baseToken != address(0)) {
-            ERC20(baseToken).transferFrom(msg.sender, address(this), netInputAmount);
+            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), netInputAmount);
         }
 
         // calculate the sale price (assume it's the same for each NFT even if weights differ)
@@ -235,7 +246,7 @@ contract PrivatePool is ERC721TokenReceiver {
         (netOutputAmount, feeAmount) = sellQuote(weightSum);
 
         //  check the nfts are not stolen
-        if (stolenNftOracle != address(0)) {
+        if (useStolenNftOracle) {
             IStolenNftOracle(stolenNftOracle).validateTokensAreNotStolen(nft, tokenIds, stolenNftProofs);
         }
 
@@ -299,7 +310,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
         if (baseToken != address(0)) {
             // transfer the base tokens from the caller
-            ERC20(baseToken).transferFrom(msg.sender, address(this), baseTokenAmount);
+            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenAmount);
         }
 
         // emit the deposit event
@@ -376,7 +387,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
         if (baseToken != address(0)) {
             // transfer the fee amount of base tokens from the caller
-            ERC20(baseToken).transferFrom(msg.sender, address(this), feeAmount);
+            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), feeAmount);
         }
 
         // transfer the input nfts from the caller
@@ -461,15 +472,15 @@ contract PrivatePool is ERC721TokenReceiver {
         emit SetFeeRate(newFeeRate);
     }
 
-    /// @notice Sets the stolen NFT oracle. Can only be called by the owner of the pool. The stolen NFT oracle is used
-    /// to check if an NFT is stolen. If it's set to the zero address then no stolen NFT checks are performed.
-    /// @param newStolenNftOracle The new stolen NFT oracle.
-    function setStolenNftOracle(address newStolenNftOracle) public onlyOwner {
-        // set the stolen NFT oracle
-        stolenNftOracle = newStolenNftOracle;
+    /// @notice Sets the whether or not to use the stolen NFT oracle. Can only be called by the owner of the pool. The
+    /// stolen NFT oracle is used to check if an NFT is stolen.
+    /// @param newUseStolenNftOracle The new use stolen NFT oracle flag.
+    function setUseStolenNftOracle(bool newUseStolenNftOracle) public onlyOwner {
+        // set the use stolen NFT oracle flag
+        useStolenNftOracle = newUseStolenNftOracle;
 
-        // emit the set stolen NFT oracle event
-        emit SetStolenNftOracle(newStolenNftOracle);
+        // emit the set use stolen NFT oracle event
+        emit SetUseStolenNftOracle(newUseStolenNftOracle);
     }
 
     /// @notice Sets the pay royalties flag. Can only be called by the owner of the pool. If royalties are enabled then

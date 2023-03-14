@@ -19,6 +19,7 @@ contract ChangeTest is Fixture {
     uint128 virtualBaseTokenReserves = 100e18;
     uint128 virtualNftReserves = 5e18;
     uint16 feeRate = 100;
+    uint56 changeFee = 80000;
     bytes32 merkleRoot = bytes32(0);
     address owner = address(this);
 
@@ -31,16 +32,9 @@ contract ChangeTest is Fixture {
     PrivatePool.MerkleMultiProof outputProof;
 
     function setUp() public {
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
-            baseToken,
-            nft,
-            virtualBaseTokenReserves,
-            virtualNftReserves,
-            feeRate,
-            merkleRoot,
-            address(stolenNftOracle),
-            false
+            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, changeFee, feeRate, merkleRoot, true, false
         );
 
         for (uint256 i = 0; i < 3; i++) {
@@ -141,15 +135,16 @@ contract ChangeTest is Fixture {
 
     function test_TransfersBaseTokensIfBaseTokenIsNotEth() public {
         // arrange
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
             address(shibaInu),
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false
         );
 
@@ -186,15 +181,16 @@ contract ChangeTest is Fixture {
 
     function test_RevertIf_BaseTokenIsNotEthAndValueIsGreaterThanZero() public {
         // arrange
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
             address(shibaInu),
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false
         );
 
@@ -242,15 +238,16 @@ contract ChangeTest is Fixture {
 
     function test_EmitChangeEventIfMerkleRootAndWeightsAreSet() public {
         // arrange
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
             address(0),
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             generateMerkleRoot(),
-            address(stolenNftOracle),
+            true,
             false
         );
 
@@ -280,15 +277,16 @@ contract ChangeTest is Fixture {
 
     function test_RevertIf_SummedInputWeightIsLessThanSummedOutputWeight() public {
         // arrange
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
             address(0),
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             generateMerkleRoot(),
-            address(stolenNftOracle),
+            true,
             false
         );
 
@@ -315,15 +313,16 @@ contract ChangeTest is Fixture {
 
     function test_RevertIf_InvalidMerkleProof() public {
         // arrange
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
             address(0),
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             generateMerkleRoot(),
-            address(stolenNftOracle),
+            true,
             false
         );
 

@@ -11,13 +11,15 @@ contract CreateTest is Fixture {
     uint128 virtualBaseTokenReserves = 100;
     uint128 virtualNftReserves = 200;
     uint16 feeRate = 10;
+    uint56 changeFee = 255;
     bytes32 merkleRoot = bytes32(0);
     bytes32 salt = bytes32(0);
     uint256[] tokenIds;
     uint256 baseTokenAmount = 20;
 
     function setUp() public {
-        privatePoolImplementation = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePoolImplementation =
+            new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         factory = new Factory();
         factory.setPrivatePoolImplementation(address(privatePoolImplementation));
 
@@ -40,9 +42,10 @@ contract CreateTest is Fixture {
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false,
             salt,
             tokenIds,
@@ -62,9 +65,10 @@ contract CreateTest is Fixture {
             address(milady),
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false,
             salt,
             tokenIds,
@@ -92,9 +96,10 @@ contract CreateTest is Fixture {
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false,
             salt,
             tokenIds,
@@ -117,9 +122,10 @@ contract CreateTest is Fixture {
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false,
             salt,
             tokenIds,
@@ -144,9 +150,10 @@ contract CreateTest is Fixture {
             address(milady),
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false,
             salt,
             tokenIds,
@@ -172,9 +179,10 @@ contract CreateTest is Fixture {
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false,
             salt,
             tokenIds,
@@ -190,9 +198,10 @@ contract CreateTest is Fixture {
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false,
             salt,
             tokenIds,

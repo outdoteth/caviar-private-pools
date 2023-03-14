@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "../Fixture.sol";
 
 contract DepositTest is Fixture {
-    PrivatePool privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+    PrivatePool privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
     uint256[] public tokenIds;
 
     function setUp() public {
@@ -15,9 +15,7 @@ contract DepositTest is Fixture {
 
         milady.setApprovalForAll(address(ethRouter), true);
 
-        privatePool.initialize(
-            address(0), address(milady), 100e18, 200e18, 10, bytes32(0), address(stolenNftOracle), false
-        );
+        privatePool.initialize(address(0), address(milady), 100e18, 200e18, 10, 10, bytes32(0), true, false);
     }
 
     function test_DepositsEthAndNftsToPool() public {

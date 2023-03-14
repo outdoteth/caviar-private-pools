@@ -7,7 +7,7 @@ contract SettersTest is Fixture {
     event SetVirtualReserves(uint128 virtualBaseTokenReserves, uint128 virtualNftReserves);
     event SetMerkleRoot(bytes32 merkleRoot);
     event SetFeeRate(uint16 feeRate);
-    event SetStolenNftOracle(address stolenNftOracle);
+    event SetUseStolenNftOracle(bool useStolenNftOracle);
     event SetPayRoyalties(bool setPayRoyalties);
 
     PrivatePool public privatePool;
@@ -15,10 +15,8 @@ contract SettersTest is Fixture {
     address owner = address(this);
 
     function setUp() public {
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
-        privatePool.initialize(
-            address(shibaInu), address(0), 100, 200, 300, bytes32(abi.encode(0xaaa)), address(stolenNftOracle), true
-        );
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
+        privatePool.initialize(address(shibaInu), address(0), 100, 200, 0, 300, bytes32(abi.encode(0xaaa)), true, true);
 
         vm.mockCall(
             address(factory),
@@ -117,32 +115,26 @@ contract SettersTest is Fixture {
         privatePool.setFeeRate(5_555);
     }
 
-    function test_setStolenNftOracle_EmitsStolenNftOracleEvent() public {
-        // arrange
-        address stolenNftOracle = address(0xdeadbeef);
-
+    function test_setUseStolenNftOracle_EmitsStolenNftOracleEvent() public {
         // act
         vm.expectEmit(true, true, true, true);
-        emit SetStolenNftOracle(stolenNftOracle);
-        privatePool.setStolenNftOracle(stolenNftOracle);
+        emit SetUseStolenNftOracle(true);
+        privatePool.setUseStolenNftOracle(true);
     }
 
-    function test_setStolenNftOracle_SetsStolenNftOracle() public {
-        // arrange
-        address stolenNftOracle = address(0xdeadbeef);
-
+    function test_setUseStolenNftOracle_SetsStolenNftOracle() public {
         // act
-        privatePool.setStolenNftOracle(stolenNftOracle);
+        privatePool.setUseStolenNftOracle(true);
 
         // assert
-        assertEq(privatePool.stolenNftOracle(), stolenNftOracle, "Should have set stolen nft oracle");
+        assertEq(privatePool.useStolenNftOracle(), true, "Should have set use stolen nft oracle");
     }
 
-    function test_setStolenNftOracle_RevertIf_NotOwner() public {
+    function test_setUseStolenNftOracle_RevertIf_NotOwner() public {
         // act
         vm.prank(address(0xbabe));
         vm.expectRevert(PrivatePool.Unauthorized.selector);
-        privatePool.setStolenNftOracle(address(0xdeadbeef));
+        privatePool.setUseStolenNftOracle(true);
     }
 
     function test_setPayRoyalties_EmitsSetPayRoyaltiesEvent() public {

@@ -3,6 +3,7 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 gas_reports = ["Factory", "EthRouter", "PrivatePool"]
+solc-version = "0.8.19"
 
 [fmt]
 wrap_comments = true

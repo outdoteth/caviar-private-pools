@@ -14,6 +14,7 @@ contract DepositTest is Fixture {
     uint128 virtualBaseTokenReserves = 100e18;
     uint128 virtualNftReserves = 5e18;
     uint16 feeRate = 0;
+    uint56 changeFee = 0;
     bytes32 merkleRoot = bytes32(0);
     address owner = address(this);
 
@@ -24,16 +25,9 @@ contract DepositTest is Fixture {
     mapping(uint256 => bool) existingTokenIds;
 
     function setUp() public {
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
-            baseToken,
-            nft,
-            virtualBaseTokenReserves,
-            virtualNftReserves,
-            feeRate,
-            merkleRoot,
-            address(stolenNftOracle),
-            false
+            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, changeFee, feeRate, merkleRoot, true, false
         );
 
         for (uint256 i = 0; i < 5; i++) {
@@ -66,15 +60,16 @@ contract DepositTest is Fixture {
 
     function test_TransfersBaseTokensFromCaller() public {
         // arrange
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
             address(shibaInu),
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false
         );
         uint256 baseTokenAmount = 3.156e18;
@@ -117,15 +112,16 @@ contract DepositTest is Fixture {
 
     function test_RevertIf_BaseTokenIsNotEthAndValueIsGreaterThanZero() public {
         // arrange
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
             address(shibaInu),
             nft,
             virtualBaseTokenReserves,
             virtualNftReserves,
+            changeFee,
             feeRate,
             merkleRoot,
-            address(stolenNftOracle),
+            true,
             false
         );
         uint256 baseTokenAmount = 1e18;

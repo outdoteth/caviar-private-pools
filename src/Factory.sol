@@ -31,9 +31,10 @@ contract Factory is ERC721, Owned {
     /// @param _nft The address of the NFT.
     /// @param _virtualBaseTokenReserves The virtual base token reserves.
     /// @param _virtualNftReserves The virtual NFT reserves.
+    /// @param _changeFee The change fee.
     /// @param _feeRate The fee rate.
     /// @param _merkleRoot The merkle root.
-    /// @param _stolenNftOracle The address of the stolen NFT oracle.
+    /// @param _useStolenNftOracle Whether to use the stolen NFT oracle.
     /// @param _salt The salt that will used on deployment.
     /// @param tokenIds The token ids to deposit to the pool.
     /// @param baseTokenAmount The amount of base tokens to deposit to the pool.
@@ -43,12 +44,13 @@ contract Factory is ERC721, Owned {
         address _nft,
         uint128 _virtualBaseTokenReserves,
         uint128 _virtualNftReserves,
+        uint56 _changeFee,
         uint16 _feeRate,
         bytes32 _merkleRoot,
-        address _stolenNftOracle,
+        bool _useStolenNftOracle,
         bool _payRoyalties,
         bytes32 _salt,
-        uint256[] calldata tokenIds,
+        uint256[] memory tokenIds,
         uint256 baseTokenAmount
     ) public payable returns (PrivatePool privatePool) {
         // check that the msg.value is equal to the base token amount if the base token is ETH or the msg.value is equal
@@ -69,9 +71,10 @@ contract Factory is ERC721, Owned {
             _nft,
             _virtualBaseTokenReserves,
             _virtualNftReserves,
+            _changeFee,
             _feeRate,
             _merkleRoot,
-            _stolenNftOracle,
+            _useStolenNftOracle,
             _payRoyalties
         );
 

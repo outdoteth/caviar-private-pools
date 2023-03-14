@@ -9,8 +9,8 @@ contract ExecuteTest is Fixture {
     address owner = address(this);
 
     function setUp() public {
-        privatePool = new PrivatePool(address(factory), address(royaltyRegistry));
-        privatePool.initialize(address(0), address(0), 0, 0, 0, bytes32(0), address(stolenNftOracle), false);
+        privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
+        privatePool.initialize(address(0), address(0), 0, 0, 0, 0, bytes32(0), true, false);
 
         vm.mockCall(
             address(factory),
