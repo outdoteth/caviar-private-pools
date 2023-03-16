@@ -49,14 +49,18 @@ contract PrivatePool is ERC721TokenReceiver {
     error FlashLoanFailed();
     error FlashLoanedNftNotReturned();
     error FlashLoanInProgress();
+    error InvalidRoyaltyFee();
 
+    /// @notice The address of the base ERC20 token.
     address public baseToken;
+
+    /// @notice The address of the nft.
     address public nft;
 
     /// @notice The change/flash fee to 4 decimals of precision. For example, 0.0025 ETH = 25. 500 USDC = 5_000_000.
     uint56 public changeFee;
 
-    /// @notice The buy/sell fee rate (in basis points) 2_000 = 2%
+    /// @notice The buy/sell fee rate (in basis points) 200 = 2%
     uint16 public feeRate;
 
     /// @notice Whether or not the pool has been initialized.
@@ -87,8 +91,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @notice Whether or not a flash loan is currently in progress.
     bool internal flashLoanInProgress;
 
-    /// @notice The NFT oracle to check if an NFT is stolen. If it's set to be address(0) then the stolen NFT check is
-    /// skipped.
+    /// @notice The NFT oracle to check if an NFT is stolen.
     address public immutable stolenNftOracle;
 
     /// @notice The factory contract that created this pool.
@@ -106,6 +109,11 @@ contract PrivatePool is ERC721TokenReceiver {
 
     receive() external payable {}
 
+    /// @dev This is only called when the base implementation contract is deployed. The following parameters are set:
+    /// - factory: The address of the factory contract
+    /// - royaltyRegistry: The address of the royalty registry from manifold.xyz
+    /// - stolenNftOracle: The address of the stolen NFT oracle
+    /// These are all stored in immutable storage, which enables all minimal proxy contracts to read them.
     constructor(address _factory, address _royaltyRegistry, address _stolenNftOracle) {
         factory = payable(_factory);
         royaltyRegistry = _royaltyRegistry;
@@ -117,7 +125,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param _nft The address of the NFT
     /// @param _virtualBaseTokenReserves The virtual base token reserves
     /// @param _virtualNftReserves The virtual NFT reserves
-    /// @param _feeRate The fee rate (in basis points) 2_000 = 2%
+    /// @param _feeRate The fee rate (in basis points) 200 = 2%
     /// @param _merkleRoot The merkle root
     /// @param _useStolenNftOracle Whether or not the pool uses the stolen NFT oracle to check if an NFT is stolen
     function initialize(
@@ -151,7 +159,7 @@ contract PrivatePool is ERC721TokenReceiver {
         // mark the pool as initialized
         initialized = true;
 
-        // emit the events
+        // emit the event
         emit Initialize(
             _baseToken,
             _nft,
@@ -206,8 +214,8 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC721(nft).safeTransferFrom(address(this), msg.sender, tokenIds[i]);
 
             if (payRoyalties) {
-                // pay the royalty fee for the NFT
-                (uint256 royaltyFee,) = _payRoyalty(nft, tokenIds[i], salePrice);
+                // get the royalty fee for the NFT
+                (uint256 royaltyFee,) = _getRoyalty(tokenIds[i], salePrice);
 
                 // add the royalty fee to the net input amount
                 netInputAmount += royaltyFee;
@@ -229,6 +237,22 @@ contract PrivatePool is ERC721TokenReceiver {
 
             // refund any excess ETH to the caller
             if (msg.value > netInputAmount) msg.sender.safeTransferETH(msg.value - netInputAmount);
+        }
+
+        if (payRoyalties) {
+            for (uint256 i = 0; i < tokenIds.length; i++) {
+                // get the royalty fee for the NFT
+                (uint256 royaltyFee, address recipient) = _getRoyalty(tokenIds[i], salePrice);
+
+                // transfer the royalty fee to the recipient if it's greater than 0
+                if (royaltyFee > 0 && recipient != address(0)) {
+                    if (baseToken != address(0)) {
+                        ERC20(baseToken).safeTransfer(recipient, royaltyFee);
+                    } else {
+                        recipient.safeTransferETH(royaltyFee);
+                    }
+                }
+            }
         }
 
         // emit the buy event
@@ -283,22 +307,31 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
 
             if (payRoyalties) {
-                // pay the royalty fee for the NFT
-                (uint256 royaltyFee,) = _payRoyalty(nft, tokenIds[i], salePrice);
+                // get the royalty fee for the NFT
+                (uint256 royaltyFee, address recipient) = _getRoyalty(tokenIds[i], salePrice);
 
                 // subtract the royalty fee from the net output amount
                 netOutputAmount -= royaltyFee;
+
+                // transfer the royalty fee to the recipient if it's greater than 0
+                if (royaltyFee > 0 && recipient != address(0)) {
+                    if (baseToken != address(0)) {
+                        ERC20(baseToken).safeTransfer(recipient, royaltyFee);
+                    } else {
+                        recipient.safeTransferETH(royaltyFee);
+                    }
+                }
             }
         }
 
-        // transfer eth to the caller if the base token is ETH or transfer the base token to the caller if the base
-        // token is not ETH
         if (baseToken == address(0)) {
+            // transfer ETH to the caller
             msg.sender.safeTransferETH(netOutputAmount);
 
             // if the protocol fee is set then pay the protocol fee
             if (protocolFeeAmount > 0) factory.safeTransferETH(protocolFeeAmount);
         } else {
+            // transfer base tokens to the caller
             ERC20(baseToken).transfer(msg.sender, netOutputAmount);
 
             // if the protocol fee is set then pay the protocol fee
@@ -367,9 +400,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
     /// @notice Changes a set of NFTs that the caller owns for another set of NFTs in the pool. The caller must approve
     /// the pool to transfer the NFTs. The sum of the caller's NFT weights must be less than or equal to the sum of the
-    /// output pool NFTs weights. The caller must also pay a fee depending on the current price and net input weight.
-    /// @dev   DO NOT call this function directly unless you are sure. The price can be manipulated to increase the fee.
-    /// Instead, use a wrapper contract to validate the max fee amount and revert if the fee is too large.
+    /// output pool NFTs weights. The caller must also pay a fee depending the net input weight and change fee amount.
     /// @param inputTokenIds The token IDs of the NFTs to change.
     /// @param inputTokenWeights The weights of the NFTs to change.
     /// @param inputProof The merkle proof for the weights of each NFT to change.
@@ -570,7 +601,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @return feeAmount The fee amount.
     /// @return protocolFeeAmount The protocol fee amount.
     function changeFeeQuote(uint256 inputAmount) public view returns (uint256 feeAmount, uint256 protocolFeeAmount) {
-        // multiply the changeFee to get the fee per NFT
+        // multiply the changeFee to get the fee per NFT (4 decimals of accuracy)
         uint256 exponent = baseToken == address(0) ? 18 - 4 : ERC20(baseToken).decimals() - 4;
         uint256 feePerNft = changeFee * 10 ** exponent;
 
@@ -691,28 +722,26 @@ contract PrivatePool is ERC721TokenReceiver {
         return sum;
     }
 
-    /// @notice Pays royalties to the royalty recipient for a given NFT and sale price. Looks up the royalty info from
-    /// the manifold registry.
-    /// @param tokenAddress The address of the NFT contract.
+    /// @notice Gets the royalty and recipient for a given NFT and sale price. Looks up the royalty info from the
+    /// manifold registry.
     /// @param tokenId The token ID of the NFT.
     /// @param salePrice The sale price of the NFT.
     /// @return royaltyFee The royalty fee to pay.
     /// @return recipient The address to pay the royalty fee to.
-    function _payRoyalty(address tokenAddress, uint256 tokenId, uint256 salePrice)
+    function _getRoyalty(uint256 tokenId, uint256 salePrice)
         internal
+        view
         returns (uint256 royaltyFee, address recipient)
     {
         // get the royalty lookup address
-        address lookupAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(tokenAddress);
+        address lookupAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(nft);
 
         if (IERC2981(lookupAddress).supportsInterface(type(IERC2981).interfaceId)) {
             // get the royalty fee from the registry
             (recipient, royaltyFee) = IERC2981(lookupAddress).royaltyInfo(tokenId, salePrice);
 
-            // transfer the royalty fee to the recipient if it's greater than 0
-            if (royaltyFee > 0 && recipient != address(0)) {
-                recipient.safeTransferETH(royaltyFee);
-            }
+            // revert if the royalty fee is greater than the sale price
+            if (royaltyFee > salePrice) revert InvalidRoyaltyFee();
         }
     }
 }

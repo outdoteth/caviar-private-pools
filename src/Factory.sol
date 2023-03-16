@@ -24,7 +24,7 @@ contract Factory is ERC721, Owned {
     /// @notice Helper contract that constructs the private pool metadata svg and json for each pool NFT.
     address public privatePoolMetadata;
 
-    /// @notice The protocol fee that is taken on each buy/sell/change. It's in basis points: 3_500 = 3.5%.
+    /// @notice The protocol fee that is taken on each buy/sell/change. It's in basis points: 350 = 3.5%.
     uint16 public protocolFeeRate;
 
     constructor() ERC721("Caviar Private Pools", "POOL") Owned(msg.sender) {}
@@ -125,7 +125,7 @@ contract Factory is ERC721, Owned {
         privatePoolImplementation = _privatePoolImplementation;
     }
 
-    /// @notice Sets the protocol fee that is taken on each buy/sell/change. It's in basis points: 3_500 = 3.5%.
+    /// @notice Sets the protocol fee that is taken on each buy/sell/change. It's in basis points: 350 = 3.5%.
     /// @param _protocolFeeRate The protocol fee.
     function setProtocolFeeRate(uint16 _protocolFeeRate) public onlyOwner {
         protocolFeeRate = _protocolFeeRate;
