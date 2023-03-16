@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {Strings} from "openzeppelin/utils/Strings.sol";
-import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
+import {Base64} from "openzeppelin/utils/Base64.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 

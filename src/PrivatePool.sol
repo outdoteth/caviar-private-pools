@@ -8,6 +8,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
 import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
+import {IERC3156FlashBorrower} from "openzeppelin/interfaces/IERC3156FlashLender.sol";
 
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 import {Factory} from "./Factory.sol";
@@ -24,21 +25,19 @@ contract PrivatePool is ERC721TokenReceiver {
         bool[] flags;
     }
 
-    // forgefmt: disable-next-item
+    // forgefmt: disable-start
     event Initialize(address indexed baseToken, address indexed nft, uint128 virtualBaseTokenReserves, uint128 virtualNftReserves, uint56 changeFee, uint16 feeRate, bytes32 merkleRoot, bool useStolenNftOracle, bool payRoyalties);
-    // forgefmt: disable-next-item
     event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount, uint256 protocolFeeAmount);
-    // forgefmt: disable-next-item
     event Sell(uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount, uint256 protocolFeeAmount);
     event Deposit(uint256[] tokenIds, uint256 baseTokenAmount);
     event Withdraw(address indexed nft, uint256[] tokenIds, address token, uint256 amount);
-    // forgefmt: disable-next-item
     event Change(uint256[] inputTokenIds, uint256[] inputTokenWeights, uint256[] outputTokenIds, uint256[] outputTokenWeights, uint256 feeAmount, uint256 protocolFeeAmount);
     event SetVirtualReserves(uint128 virtualBaseTokenReserves, uint128 virtualNftReserves);
     event SetMerkleRoot(bytes32 merkleRoot);
     event SetFeeRate(uint16 feeRate);
     event SetUseStolenNftOracle(bool useStolenNftOracle);
     event SetPayRoyalties(bool payRoyalties);
+    // forgefmt: disable-end
 
     error AlreadyInitialized();
     error Unauthorized();
@@ -46,6 +45,10 @@ contract PrivatePool is ERC721TokenReceiver {
     error InvalidMerkleProof();
     error InsufficientInputWeight();
     error FeeRateTooHigh();
+    error NotAvailableForFlashLoan();
+    error FlashLoanFailed();
+    error FlashLoanedNftNotReturned();
+    error FlashLoanInProgress();
 
     address public baseToken;
     address public nft;
@@ -80,6 +83,9 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @notice The merkle root of all the token weights in the pool. If the merkle root is set to bytes32(0) then all
     /// NFTs are set to have a weight of 1e18.
     bytes32 public merkleRoot;
+
+    /// @notice Whether or not a flash loan is currently in progress.
+    bool internal flashLoanInProgress;
 
     /// @notice The NFT oracle to check if an NFT is stolen. If it's set to be address(0) then the stolen NFT check is
     /// skipped.
@@ -247,6 +253,9 @@ contract PrivatePool is ERC721TokenReceiver {
     ) public returns (uint256 netOutputAmount, uint256 feeAmount, uint256 protocolFeeAmount) {
         // ~~~ Checks ~~~ //
 
+        // check that a flash loan is not currently in progress
+        if (flashLoanInProgress) revert FlashLoanInProgress();
+
         // calculate the sum of weights of the NFTs to sell
         uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
 
@@ -376,6 +385,9 @@ contract PrivatePool is ERC721TokenReceiver {
         MerkleMultiProof memory outputProof
     ) public payable returns (uint256 feeAmount, uint256 protocolFeeAmount) {
         // ~~~ Checks ~~~ //
+
+        // check that a flash loan is not currently in progress
+        if (flashLoanInProgress) revert FlashLoanInProgress();
 
         // check that the caller sent 0 ETH if base token is not ETH
         if (baseToken != address(0) && msg.value > 0) revert InvalidEthAmount();
@@ -572,6 +584,78 @@ contract PrivatePool is ERC721TokenReceiver {
         // ensure that the exponent is always to 18 decimals of accuracy
         uint256 exponent = baseToken == address(0) ? 18 : (36 - ERC20(baseToken).decimals());
         return (virtualBaseTokenReserves * 10 ** exponent) / virtualNftReserves;
+    }
+
+    /// @notice Returns the fee required to flash swap a given NFT.
+    /// @return feeAmount The fee amount.
+    function flashFee(address, uint256) public view returns (uint256) {
+        return changeFee;
+    }
+
+    /// @notice Returns the token that is used to pay the flash fee.
+    function flashFeeToken() public view returns (address) {
+        return baseToken;
+    }
+
+    /// @notice Returns whether or not an NFT is available for a flash loan.
+    /// @param token The address of the NFT contract.
+    /// @param tokenId The ID of the NFT.
+    /// @return available Whether or not the NFT is available for a flash loan.
+    function availableForFlashLoan(address token, uint256 tokenId) public view returns (bool) {
+        // return if the NFT is owned by this contract
+        try ERC721(token).ownerOf(tokenId) returns (address result) {
+            return result == address(this);
+        } catch {
+            return false;
+        }
+    }
+
+    /// @notice Executes a flash loan.
+    /// @param receiver The receiver of the flash loan.
+    /// @param token The address of the NFT contract.
+    /// @param tokenId The ID of the NFT.
+    /// @param data The data to pass to the receiver.
+    /// @return success Whether or not the flash loan was successful.
+    function flashLoan(IERC3156FlashBorrower receiver, address token, uint256 tokenId, bytes calldata data)
+        external
+        payable
+        returns (bool)
+    {
+        // check that a flash loan is not already in progress
+        if (flashLoanInProgress) revert FlashLoanInProgress();
+
+        // set the flash loan in progress flag
+        flashLoanInProgress = true;
+
+        // check that the NFT is available for a flash loan
+        if (!availableForFlashLoan(token, tokenId)) revert NotAvailableForFlashLoan();
+
+        // calculate the fee
+        uint256 fee = flashFee(token, tokenId);
+
+        // if base token is ETH then check that caller sent enough for the fee
+        if (baseToken == address(0) && msg.value < fee) revert InvalidEthAmount();
+
+        // transfer the NFT to the borrower
+        ERC721(token).safeTransferFrom(address(this), address(receiver), tokenId);
+
+        // call the borrower
+        bool success =
+            receiver.onFlashLoan(msg.sender, token, tokenId, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan");
+
+        // check that flashloan was successful
+        if (!success) revert FlashLoanFailed();
+
+        // check that the NFT was returned by the borrower
+        if (ERC721(token).ownerOf(tokenId) != address(this)) revert FlashLoanedNftNotReturned();
+
+        // transfer the fee from the borrower
+        if (baseToken != address(0)) ERC20(baseToken).transferFrom(msg.sender, address(this), fee);
+
+        // turn off the flash loan in progress flag
+        flashLoanInProgress = false;
+
+        return success;
     }
 
     /// @notice Sums the weights of each NFT and validates that the weights are correct by verifying the merkle proof.
