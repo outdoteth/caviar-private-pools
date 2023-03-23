@@ -15,7 +15,7 @@ contract Factory is ERC721, Owned {
     using LibClone for address;
     using SafeTransferLib for address;
 
-    event Create(address indexed privatePool, uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
+    event Create(address indexed privatePool, uint256[] tokenIds, uint256 baseTokenAmount);
     event Withdraw(address indexed token, uint256 indexed amount);
 
     /// @notice The address of the private pool implementation that proxies point to.
@@ -103,14 +103,9 @@ contract Factory is ERC721, Owned {
 
     /// @notice Predicts the deployment address of a new private pool.
     /// @param salt The salt that will used on deployment.
-    /// @param deployer The address of the deployer.
     /// @return predictedAddress The predicted deployment address of the private pool.
-    function predictPoolDeploymentAddress(bytes32 salt, address deployer)
-        public
-        view
-        returns (address predictedAddress)
-    {
-        predictedAddress = privatePoolImplementation.predictDeterministicAddress(salt, deployer);
+    function predictPoolDeploymentAddress(bytes32 salt) public view returns (address predictedAddress) {
+        predictedAddress = privatePoolImplementation.predictDeterministicAddress(salt, address(this));
     }
 
     /// @notice Sets private pool metadata contract.

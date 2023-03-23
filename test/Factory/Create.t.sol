@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "../Fixture.sol";
 
 contract CreateTest is Fixture {
-    event Create(address indexed privatePool, uint256[] indexed tokenIds, uint256 indexed baseTokenAmount);
+    event Create(address indexed privatePool, uint256[] tokenIds, uint256 baseTokenAmount);
 
     address baseToken = address(0);
     address nft = address(milady);
@@ -32,7 +32,9 @@ contract CreateTest is Fixture {
 
     function test_EmitsCreateEvent() public {
         // arrange
-        address predictedAddress = factory.predictPoolDeploymentAddress(salt, address(factory));
+        address predictedAddress = factory.predictPoolDeploymentAddress(salt);
+        tokenIds.push(1);
+        tokenIds.push(2);
 
         // act
         vm.expectEmit(true, true, true, true);
