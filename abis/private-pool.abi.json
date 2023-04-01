@@ -107,6 +107,12 @@
         "internalType": "uint256",
         "name": "protocolFeeAmount",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "royaltyFeeAmount",
+        "type": "uint256"
       }
     ],
     "name": "Buy",
@@ -266,6 +272,12 @@
         "indexed": false,
         "internalType": "uint256",
         "name": "protocolFeeAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "royaltyFeeAmount",
         "type": "uint256"
       }
     ],
@@ -1010,6 +1022,44 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint128",
+        "name": "newVirtualBaseTokenReserves",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "newVirtualNftReserves",
+        "type": "uint128"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "newMerkleRoot",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint16",
+        "name": "newFeeRate",
+        "type": "uint16"
+      },
+      {
+        "internalType": "bool",
+        "name": "newUseStolenNftOracle",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "newPayRoyalties",
+        "type": "bool"
+      }
+    ],
+    "name": "setAllParameters",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

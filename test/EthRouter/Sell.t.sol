@@ -64,7 +64,7 @@ contract SellTest is Fixture {
         uint256 balanceBefore = address(this).balance;
 
         // act
-        ethRouter.sell(sells, minOutputAmount, 0);
+        ethRouter.sell(sells, minOutputAmount, 0, false);
 
         // assert
         assertEq(
@@ -84,7 +84,7 @@ contract SellTest is Fixture {
 
         // act
         vm.expectRevert(EthRouter.OutputAmountTooSmall.selector);
-        ethRouter.sell(sells, minOutputAmount + 100, 0);
+        ethRouter.sell(sells, minOutputAmount + 100, 0, false);
     }
 
     function test_CallsPrivatePoolWithSellData() public {
@@ -110,7 +110,7 @@ contract SellTest is Fixture {
                 )
             );
         }
-        ethRouter.sell(sells, minOutputAmount, 0);
+        ethRouter.sell(sells, minOutputAmount, 0, false);
     }
 
     function test_CallsApproveForEachPrivatePool() public {
@@ -128,7 +128,7 @@ contract SellTest is Fixture {
                 address(milady), 0, abi.encodeWithSelector(ERC721.setApprovalForAll.selector, sells[i].pool, true)
             );
         }
-        ethRouter.sell(sells, minOutputAmount, 0);
+        ethRouter.sell(sells, minOutputAmount, 0, false);
     }
 
     function test_RevertIf_DeadlineHasPassed() public {
@@ -138,7 +138,7 @@ contract SellTest is Fixture {
         // act
         vm.expectRevert(EthRouter.DeadlinePassed.selector);
         vm.warp(100);
-        ethRouter.sell(sells, minOutputAmount, block.timestamp - 1);
+        ethRouter.sell(sells, minOutputAmount, block.timestamp - 1, false);
     }
 
     function test_SellsToPublicPool() public {
@@ -181,7 +181,7 @@ contract SellTest is Fixture {
                 Pair.nftSell.selector, tokenIds, 0, 0, new bytes32[][](0), new IStolenNftOracle.Message[](0)
             )
         );
-        ethRouter.sell(sells, minOutputAmount, 0);
+        ethRouter.sell(sells, minOutputAmount, 0, false);
 
         // assert
         assertEq(
@@ -191,5 +191,52 @@ contract SellTest is Fixture {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             assertEq(milady.ownerOf(tokenIds[i]), address(pair), "Should have transferred NFT to public pool");
         }
+    }
+
+    function test_PaysRoyalties() public {
+        // arrange
+        EthRouter.Sell[] memory sells = new EthRouter.Sell[](3);
+        (EthRouter.Sell memory sell1, uint256 outputAmount1) = _addSell();
+        (EthRouter.Sell memory sell2, uint256 outputAmount2) = _addSell();
+        minOutputAmount += outputAmount1 + outputAmount2;
+        sells[0] = sell1;
+        sells[1] = sell2;
+        Pair pair = caviar.create(address(milady), address(0), bytes32(0));
+        deal(address(pair), 1.123e18);
+        deal(address(pair), address(pair), 10e18);
+
+        uint256[] memory tokenIds = new uint256[](2);
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            tokenIds[i] = i + totalTokens;
+            milady.mint(address(this), i + totalTokens);
+        }
+        sells[2] = EthRouter.Sell({
+            pool: payable(address(pair)),
+            nft: address(milady),
+            tokenIds: tokenIds,
+            tokenWeights: new uint256[](0),
+            proof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
+            stolenNftProofs: new IStolenNftOracle.Message[](0),
+            isPublicPool: true,
+            publicPoolProofs: new bytes32[][](0)
+        });
+
+        uint256 outputAmount = pair.sellQuote(tokenIds.length * 1e18);
+
+        uint256 royaltyFeeRate = 0.1e18; // 10%
+        address royaltyRecipient = address(0xbeefbeef);
+        milady.setRoyaltyInfo(royaltyFeeRate, royaltyRecipient);
+
+        uint256 royaltyFee = outputAmount / tokenIds.length * royaltyFeeRate / 1e18 * tokenIds.length;
+        outputAmount -= royaltyFee;
+
+        minOutputAmount += outputAmount;
+        uint256 balanceBefore = address(this).balance;
+
+        // act
+        ethRouter.sell(sells, minOutputAmount, 0, true);
+
+        // assert
+        assertEq(address(royaltyRecipient).balance, royaltyFee, "Should have paid royalties");
     }
 }

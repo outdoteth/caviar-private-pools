@@ -1,15 +1,5 @@
 [
   {
-    "inputs": [],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "inputs": [],
-    "name": "InvalidEthAmount",
-    "type": "error"
-  },
-  {
     "anonymous": false,
     "inputs": [
       {
@@ -65,50 +55,6 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "privatePool",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256[]",
-        "name": "tokenIds",
-        "type": "uint256[]"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "baseTokenAmount",
-        "type": "uint256"
-      }
-    ],
-    "name": "Create",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "user",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
-      }
-    ],
-    "name": "OwnershipTransferred",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
         "name": "from",
         "type": "address"
       },
@@ -126,25 +72,6 @@
       }
     ],
     "name": "Transfer",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "Withdraw",
     "type": "event"
   },
   {
@@ -182,80 +109,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_baseToken",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_nft",
-        "type": "address"
-      },
-      {
-        "internalType": "uint128",
-        "name": "_virtualBaseTokenReserves",
-        "type": "uint128"
-      },
-      {
-        "internalType": "uint128",
-        "name": "_virtualNftReserves",
-        "type": "uint128"
-      },
-      {
-        "internalType": "uint56",
-        "name": "_changeFee",
-        "type": "uint56"
-      },
-      {
-        "internalType": "uint16",
-        "name": "_feeRate",
-        "type": "uint16"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_merkleRoot",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bool",
-        "name": "_useStolenNftOracle",
-        "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "_payRoyalties",
-        "type": "bool"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_salt",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "tokenIds",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "baseTokenAmount",
-        "type": "uint256"
-      }
-    ],
-    "name": "create",
-    "outputs": [
-      {
-        "internalType": "contract PrivatePool",
-        "name": "privatePool",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -315,19 +168,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "owner",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -341,64 +181,6 @@
         "internalType": "address",
         "name": "owner",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "salt",
-        "type": "bytes32"
-      }
-    ],
-    "name": "predictPoolDeploymentAddress",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "predictedAddress",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "privatePoolImplementation",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "privatePoolMetadata",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "protocolFeeRate",
-    "outputs": [
-      {
-        "internalType": "uint16",
-        "name": "",
-        "type": "uint16"
       }
     ],
     "stateMutability": "view",
@@ -476,45 +258,6 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_privatePoolImplementation",
-        "type": "address"
-      }
-    ],
-    "name": "setPrivatePoolImplementation",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_privatePoolMetadata",
-        "type": "address"
-      }
-    ],
-    "name": "setPrivatePoolMetadata",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint16",
-        "name": "_protocolFeeRate",
-        "type": "uint16"
-      }
-    ],
-    "name": "setProtocolFeeRate",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "bytes4",
         "name": "interfaceId",
         "type": "bytes4"
@@ -585,40 +328,5 @@
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
-      }
-    ],
-    "name": "transferOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "withdraw",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "stateMutability": "payable",
-    "type": "receive"
   }
 ]

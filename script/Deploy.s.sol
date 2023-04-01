@@ -12,7 +12,7 @@ contract DeployScript is Script {
     function run() public {
         vm.startBroadcast();
 
-        EthRouter ethRouter = new EthRouter();
+        EthRouter ethRouter = new EthRouter(vm.envAddress("ROYALTY_REGISTRY"));
         console.log("eth router:", address(ethRouter));
 
         Factory factory = new Factory();

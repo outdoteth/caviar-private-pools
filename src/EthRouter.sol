@@ -5,6 +5,7 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
 import {Pair, ReservoirOracle} from "caviar/Pair.sol";
+import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
 
 import {PrivatePool} from "./PrivatePool.sol";
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
@@ -33,20 +34,6 @@ contract EthRouter is ERC721TokenReceiver {
         bytes32[][] publicPoolProofs;
     }
 
-    struct Deposit {
-        address payable pool;
-        address nft;
-        uint256[] tokenIds;
-    }
-
-    struct Withdraw {
-        address pool;
-        address nft;
-        uint256[] tokenIds;
-        address token;
-        uint256 tokenAmount;
-    }
-
     struct Change {
         address payable pool;
         address nft;
@@ -61,14 +48,22 @@ contract EthRouter is ERC721TokenReceiver {
     error DeadlinePassed();
     error OutputAmountTooSmall();
     error PriceOutOfRange();
+    error InvalidRoyaltyFee();
+
+    address public royaltyRegistry;
 
     receive() external payable {}
+
+    constructor(address _royaltyRegistry) {
+        royaltyRegistry = _royaltyRegistry;
+    }
 
     /// @notice Executes a series of buy operations against public or private pools.
     /// @param buys The buy operations to execute.
     /// @param deadline The deadline for the transaction to be mined. Will revert if timestamp is greater than deadline.
     /// If it's set to 0 then there is no deadline.
-    function buy(Buy[] calldata buys, uint256 deadline) public payable {
+    /// @param payRoyalties Whether to pay royalties or not.
+    function buy(Buy[] calldata buys, uint256 deadline, bool payRoyalties) public payable {
         // check that the deadline has not passed (if any)
         if (block.timestamp > deadline && deadline != 0) {
             revert DeadlinePassed();
@@ -79,7 +74,24 @@ contract EthRouter is ERC721TokenReceiver {
             uint256 netInputAmount;
             if (buys[i].isPublicPool) {
                 // execute the buy against a public pool
-                Pair(buys[i].pool).nftBuy{value: buys[i].baseTokenAmount}(buys[i].tokenIds, buys[i].baseTokenAmount, 0);
+                uint256 inputAmount = Pair(buys[i].pool).nftBuy{value: buys[i].baseTokenAmount}(
+                    buys[i].tokenIds, buys[i].baseTokenAmount, 0
+                );
+
+                // pay the royalties if buyer has opted-in
+                if (payRoyalties) {
+                    uint256 salePrice = inputAmount / buys[i].tokenIds.length;
+                    for (uint256 j = 0; j < buys[i].tokenIds.length; j++) {
+                        // get the royalty fee and recipient
+                        (uint256 royaltyFee, address royaltyRecipient) =
+                            getRoyalty(buys[i].nft, buys[i].tokenIds[j], salePrice);
+
+                        if (royaltyFee > 0) {
+                            // transfer the royalty fee to the royalty recipient
+                            royaltyRecipient.safeTransferETH(royaltyFee);
+                        }
+                    }
+                }
             } else {
                 // execute the buy against a private pool
                 PrivatePool(buys[i].pool).buy{value: buys[i].baseTokenAmount}(
@@ -104,7 +116,8 @@ contract EthRouter is ERC721TokenReceiver {
     /// @param minOutputAmount The minimum amount of output tokens that must be received for the transaction to succeed.
     /// @param deadline The deadline for the transaction to be mined. Will revert if timestamp is greater than deadline.
     /// Set to 0 for there to be no deadline.
-    function sell(Sell[] calldata sells, uint256 minOutputAmount, uint256 deadline) public {
+    /// @param payRoyalties Whether to pay royalties or not.
+    function sell(Sell[] calldata sells, uint256 minOutputAmount, uint256 deadline, bool payRoyalties) public {
         // check that the deadline has not passed (if any)
         if (block.timestamp > deadline && deadline != 0) {
             revert DeadlinePassed();
@@ -122,7 +135,7 @@ contract EthRouter is ERC721TokenReceiver {
 
             if (sells[i].isPublicPool) {
                 // exceute the sell against a public pool
-                Pair(sells[i].pool).nftSell(
+                uint256 outputAmount = Pair(sells[i].pool).nftSell(
                     sells[i].tokenIds,
                     0,
                     0,
@@ -131,6 +144,21 @@ contract EthRouter is ERC721TokenReceiver {
                     // decoded/encoded 1-to-1.
                     abi.decode(abi.encode(sells[i].stolenNftProofs), (ReservoirOracle.Message[]))
                 );
+
+                // pay the royalties if buyer has opted-in
+                if (payRoyalties) {
+                    uint256 salePrice = outputAmount / sells[i].tokenIds.length;
+                    for (uint256 j = 0; j < sells[i].tokenIds.length; j++) {
+                        // get the royalty fee and recipient
+                        (uint256 royaltyFee, address royaltyRecipient) =
+                            getRoyalty(sells[i].nft, sells[i].tokenIds[j], salePrice);
+
+                        if (royaltyFee > 0) {
+                            // transfer the royalty fee to the royalty recipient
+                            royaltyRecipient.safeTransferETH(royaltyFee);
+                        }
+                    }
+                }
             } else {
                 // execute the sell against a private pool
                 PrivatePool(sells[i].pool).sell(
@@ -228,6 +256,29 @@ contract EthRouter is ERC721TokenReceiver {
         // refund any surplus ETH to the caller
         if (address(this).balance > 0) {
             msg.sender.safeTransferETH(address(this).balance);
+        }
+    }
+
+    /// @notice Gets the royalty and recipient for a given NFT and sale price. Looks up the royalty info from the
+    /// manifold registry.
+    /// @param tokenId The token ID of the NFT.
+    /// @param salePrice The sale price of the NFT.
+    /// @return royaltyFee The royalty fee to pay.
+    /// @return recipient The address to pay the royalty fee to.
+    function getRoyalty(address nft, uint256 tokenId, uint256 salePrice)
+        public
+        view
+        returns (uint256 royaltyFee, address recipient)
+    {
+        // get the royalty lookup address
+        address lookupAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(nft);
+
+        if (IERC2981(lookupAddress).supportsInterface(type(IERC2981).interfaceId)) {
+            // get the royalty fee from the registry
+            (recipient, royaltyFee) = IERC2981(lookupAddress).royaltyInfo(tokenId, salePrice);
+
+            // revert if the royalty fee is greater than the sale price
+            if (royaltyFee > salePrice) revert InvalidRoyaltyFee();
         }
     }
 }

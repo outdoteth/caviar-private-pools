@@ -35,6 +35,8 @@ contract CreateTest is Fixture {
         address predictedAddress = factory.predictPoolDeploymentAddress(salt);
         tokenIds.push(1);
         tokenIds.push(2);
+        tokenIds.push(3);
+        tokenIds.push(4);
 
         // act
         vm.expectEmit(true, true, true, true);

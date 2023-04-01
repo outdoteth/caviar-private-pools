@@ -6,7 +6,12 @@ import "../../src/PrivatePool.sol";
 
 contract BuyTest is Fixture {
     event Buy(
-        uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount, uint256 protocolFeeAmount
+        uint256[] tokenIds,
+        uint256[] tokenWeights,
+        uint256 inputAmount,
+        uint256 feeAmount,
+        uint256 protocolFeeAmount,
+        uint256 royaltyFeeAmount
     );
 
     PrivatePool public privatePool;
@@ -59,7 +64,7 @@ contract BuyTest is Fixture {
 
         // act
         vm.expectEmit(true, true, true, true);
-        emit Buy(tokenIds, tokenWeights, netInputAmount, feeAmount, protocolFeeAmount);
+        emit Buy(tokenIds, tokenWeights, netInputAmount, feeAmount, protocolFeeAmount, 0);
         privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
     }
 

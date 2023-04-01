@@ -1,0 +1,386 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_royaltyRegistry",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "DeadlinePassed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OutputAmountTooSmall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PriceOutOfRange",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address payable",
+            "name": "pool",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "nft",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "tokenIds",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "tokenWeights",
+            "type": "uint256[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bytes32[]",
+                "name": "proof",
+                "type": "bytes32[]"
+              },
+              {
+                "internalType": "bool[]",
+                "name": "flags",
+                "type": "bool[]"
+              }
+            ],
+            "internalType": "struct PrivatePool.MerkleMultiProof",
+            "name": "proof",
+            "type": "tuple"
+          },
+          {
+            "internalType": "uint256",
+            "name": "baseTokenAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isPublicPool",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct EthRouter.Buy[]",
+        "name": "buys",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
+      }
+    ],
+    "name": "buy",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address payable",
+            "name": "pool",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "nft",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "inputTokenIds",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "inputTokenWeights",
+            "type": "uint256[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bytes32[]",
+                "name": "proof",
+                "type": "bytes32[]"
+              },
+              {
+                "internalType": "bool[]",
+                "name": "flags",
+                "type": "bool[]"
+              }
+            ],
+            "internalType": "struct PrivatePool.MerkleMultiProof",
+            "name": "inputProof",
+            "type": "tuple"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "outputTokenIds",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "outputTokenWeights",
+            "type": "uint256[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bytes32[]",
+                "name": "proof",
+                "type": "bytes32[]"
+              },
+              {
+                "internalType": "bool[]",
+                "name": "flags",
+                "type": "bool[]"
+              }
+            ],
+            "internalType": "struct PrivatePool.MerkleMultiProof",
+            "name": "outputProof",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct EthRouter.Change[]",
+        "name": "changes",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
+      }
+    ],
+    "name": "change",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address payable",
+        "name": "privatePool",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "nft",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "tokenIds",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minPrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxPrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
+      }
+    ],
+    "name": "deposit",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      }
+    ],
+    "name": "getRoyaltyRate",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "royaltyAmount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "name": "onERC721Received",
+    "outputs": [
+      {
+        "internalType": "bytes4",
+        "name": "",
+        "type": "bytes4"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "royaltyRegistry",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address payable",
+            "name": "pool",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "nft",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "tokenIds",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "tokenWeights",
+            "type": "uint256[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bytes32[]",
+                "name": "proof",
+                "type": "bytes32[]"
+              },
+              {
+                "internalType": "bool[]",
+                "name": "flags",
+                "type": "bool[]"
+              }
+            ],
+            "internalType": "struct PrivatePool.MerkleMultiProof",
+            "name": "proof",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bytes32",
+                "name": "id",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes",
+                "name": "payload",
+                "type": "bytes"
+              },
+              {
+                "internalType": "uint256",
+                "name": "timestamp",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct IStolenNftOracle.Message[]",
+            "name": "stolenNftProofs",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "bool",
+            "name": "isPublicPool",
+            "type": "bool"
+          },
+          {
+            "internalType": "bytes32[][]",
+            "name": "publicPoolProofs",
+            "type": "bytes32[][]"
+          }
+        ],
+        "internalType": "struct EthRouter.Sell[]",
+        "name": "sells",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minOutputAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
+      }
+    ],
+    "name": "sell",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "stateMutability": "payable",
+    "type": "receive"
+  }
+]

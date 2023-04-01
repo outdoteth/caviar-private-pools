@@ -27,8 +27,8 @@ contract PrivatePool is ERC721TokenReceiver {
 
     // forgefmt: disable-start
     event Initialize(address indexed baseToken, address indexed nft, uint128 virtualBaseTokenReserves, uint128 virtualNftReserves, uint56 changeFee, uint16 feeRate, bytes32 merkleRoot, bool useStolenNftOracle, bool payRoyalties);
-    event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount, uint256 protocolFeeAmount);
-    event Sell(uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount, uint256 protocolFeeAmount);
+    event Buy(uint256[] tokenIds, uint256[] tokenWeights, uint256 inputAmount, uint256 feeAmount, uint256 protocolFeeAmount, uint256 royaltyFeeAmount);
+    event Sell(uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount, uint256 protocolFeeAmount, uint256 royaltyFeeAmount);
     event Deposit(uint256[] tokenIds, uint256 baseTokenAmount);
     event Withdraw(address indexed nft, uint256[] tokenIds, address token, uint256 amount);
     event Change(uint256[] inputTokenIds, uint256[] inputTokenWeights, uint256[] outputTokenIds, uint256[] outputTokenWeights, uint256 feeAmount, uint256 protocolFeeAmount);
@@ -208,7 +208,7 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // calculate the sale price (assume it's the same for each NFT even if weights differ)
         uint256 salePrice = (netInputAmount - feeAmount - protocolFeeAmount) / tokenIds.length;
-
+        uint256 royaltyFeeAmount = 0;
         for (uint256 i = 0; i < tokenIds.length; i++) {
             // transfer the NFT to the caller
             ERC721(nft).safeTransferFrom(address(this), msg.sender, tokenIds[i]);
@@ -217,10 +217,13 @@ contract PrivatePool is ERC721TokenReceiver {
                 // get the royalty fee for the NFT
                 (uint256 royaltyFee,) = _getRoyalty(tokenIds[i], salePrice);
 
-                // add the royalty fee to the net input amount
-                netInputAmount += royaltyFee;
+                // add the royalty fee to the total royalty fee amount
+                royaltyFeeAmount += royaltyFee;
             }
         }
+
+        // add the royalty fee amount to the net input aount
+        netInputAmount += royaltyFeeAmount;
 
         if (baseToken != address(0)) {
             // transfer the base token from the caller to the contract
@@ -256,7 +259,7 @@ contract PrivatePool is ERC721TokenReceiver {
         }
 
         // emit the buy event
-        emit Buy(tokenIds, tokenWeights, netInputAmount, feeAmount, protocolFeeAmount);
+        emit Buy(tokenIds, tokenWeights, netInputAmount, feeAmount, protocolFeeAmount, royaltyFeeAmount);
     }
 
     /// @notice Sells NFTs into the pool and transfers base tokens to the caller. NFTs are transferred from the caller
@@ -299,19 +302,20 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // ~~~ Interactions ~~~ //
 
-        // calculate the sale price (assume it's the same for each NFT even if weights differ)
-        uint256 salePrice = (netOutputAmount + feeAmount + protocolFeeAmount) / tokenIds.length;
-
+        uint256 royaltyFeeAmount = 0;
         for (uint256 i = 0; i < tokenIds.length; i++) {
             // transfer each nft from the caller
             ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
 
             if (payRoyalties) {
+                // calculate the sale price (assume it's the same for each NFT even if weights differ)
+                uint256 salePrice = (netOutputAmount + feeAmount + protocolFeeAmount) / tokenIds.length;
+
                 // get the royalty fee for the NFT
                 (uint256 royaltyFee, address recipient) = _getRoyalty(tokenIds[i], salePrice);
 
-                // subtract the royalty fee from the net output amount
-                netOutputAmount -= royaltyFee;
+                // tally the royalty fee amount
+                royaltyFeeAmount += royaltyFee;
 
                 // transfer the royalty fee to the recipient if it's greater than 0
                 if (royaltyFee > 0 && recipient != address(0)) {
@@ -323,6 +327,9 @@ contract PrivatePool is ERC721TokenReceiver {
                 }
             }
         }
+
+        // subtract the royalty fee amount from the net output amount
+        netOutputAmount -= royaltyFeeAmount;
 
         if (baseToken == address(0)) {
             // transfer ETH to the caller
@@ -339,7 +346,7 @@ contract PrivatePool is ERC721TokenReceiver {
         }
 
         // emit the sell event
-        emit Sell(tokenIds, tokenWeights, netOutputAmount, feeAmount, protocolFeeAmount);
+        emit Sell(tokenIds, tokenWeights, netOutputAmount, feeAmount, protocolFeeAmount, royaltyFeeAmount);
     }
 
     /// @notice Deposits base tokens and NFTs into the pool. The caller must approve the pool to transfer their NFTs and
@@ -556,6 +563,28 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // emit the set pay royalties event
         emit SetPayRoyalties(newPayRoyalties);
+    }
+
+    /// @notice Updates all parameter settings in one go.
+    /// @param newVirtualBaseTokenReserves The new virtual base token reserves.
+    /// @param newVirtualNftReserves The new virtual NFT reserves.
+    /// @param newMerkleRoot The new merkle root.
+    /// @param newFeeRate The new fee rate (in basis points)
+    /// @param newUseStolenNftOracle The new use stolen NFT oracle flag.
+    /// @param newPayRoyalties The new pay royalties flag.
+    function setAllParameters(
+        uint128 newVirtualBaseTokenReserves,
+        uint128 newVirtualNftReserves,
+        bytes32 newMerkleRoot,
+        uint16 newFeeRate,
+        bool newUseStolenNftOracle,
+        bool newPayRoyalties
+    ) public {
+        setVirtualReserves(newVirtualBaseTokenReserves, newVirtualNftReserves);
+        setMerkleRoot(newMerkleRoot);
+        setFeeRate(newFeeRate);
+        setUseStolenNftOracle(newUseStolenNftOracle);
+        setPayRoyalties(newPayRoyalties);
     }
 
     /// @notice Returns the required input of buying a given amount of NFTs inclusive of the fee which is dependent on

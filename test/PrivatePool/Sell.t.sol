@@ -6,7 +6,12 @@ import "../../src/PrivatePool.sol";
 
 contract SellTest is Fixture {
     event Sell(
-        uint256[] tokenIds, uint256[] tokenWeights, uint256 outputAmount, uint256 feeAmount, uint256 protocolFeeAmount
+        uint256[] tokenIds,
+        uint256[] tokenWeights,
+        uint256 outputAmount,
+        uint256 feeAmount,
+        uint256 protocolFeeAmount,
+        uint256 royaltyFeeAmount
     );
 
     PrivatePool public privatePool;
@@ -67,7 +72,7 @@ contract SellTest is Fixture {
 
         // act
         vm.expectEmit(true, true, true, true);
-        emit Sell(tokenIds, tokenWeights, netOutputAmount, feeAmount, protocolFeeAmount);
+        emit Sell(tokenIds, tokenWeights, netOutputAmount, feeAmount, protocolFeeAmount, 0);
         privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);
     }
 

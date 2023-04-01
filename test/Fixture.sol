@@ -26,7 +26,7 @@ contract Fixture is Test, ERC721TokenReceiver {
     StolenNftOracle public stolenNftOracle = new StolenNftOracle();
     Airdrop public airdrop = new Airdrop();
     RoyaltyRegistry public royaltyRegistry = new RoyaltyRegistry(address(0));
-    EthRouter public ethRouter = new EthRouter();
+    EthRouter public ethRouter = new EthRouter(address(royaltyRegistry));
     Caviar public caviar = new Caviar(address(stolenNftOracle));
     Factory public factory = new Factory();
     PrivatePool public privatePoolImplementation =
