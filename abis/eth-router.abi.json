@@ -17,6 +17,11 @@
   },
   {
     "inputs": [],
+    "name": "InvalidRoyaltyFee",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "OutputAmountTooSmall",
     "type": "error"
   },
@@ -85,6 +90,11 @@
         "internalType": "uint256",
         "name": "deadline",
         "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "payRoyalties",
+        "type": "bool"
       }
     ],
     "name": "buy",
@@ -218,16 +228,31 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "tokenAddress",
+        "name": "nft",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "salePrice",
+        "type": "uint256"
       }
     ],
-    "name": "getRoyaltyRate",
+    "name": "getRoyalty",
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "royaltyAmount",
+        "name": "royaltyFee",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -372,6 +397,11 @@
         "internalType": "uint256",
         "name": "deadline",
         "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "payRoyalties",
+        "type": "bool"
       }
     ],
     "name": "sell",

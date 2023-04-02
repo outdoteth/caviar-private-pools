@@ -13,6 +13,34 @@ import {IERC3156FlashBorrower} from "openzeppelin/interfaces/IERC3156FlashLender
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 import {Factory} from "./Factory.sol";
 
+/// @title Private Pool
+/// @author out.eth (@outdoteth)
+/// @notice A private pool is a an NFT AMM controlled by a single owner with concentrated liquidity, custom fee rates,
+/// stolen NFT filtering, custom NFT weightings, royalty support, and flash loans. You can create a pool and change
+/// these parameters to your liking. Deposit NFTs and base tokens (or ETH) into the pool to enable trading. Earn fees on
+/// each trade.
+/**
+ *                                   ____
+ *                                /\|    ~~\
+ *                              /'  |   ,-. `\
+ *                             |       | X |  |
+ *                            _|________`-'   |X
+ *                          /'          ~~~~~~~~~,
+ *                        /'             ,_____,/_
+ *                     ,/'        ___,'~~         ;
+ * ~~~~~~~~|~~~~~~~|---          /  X,~~~~~~~~~~~~,
+ *         |       |            |  XX'____________'
+ *         |       |           /' XXX|            ;
+ *         |       |        --x|  XXX,~~~~~~~~~~~~,
+ *         |       |          X|     '____________'
+ *         |   o   |---~~~~\__XX\             |XX
+ *         |       |          XXX`\          /XXXX
+ * ~~~~~~~~'~~~~~~~'               `\xXXXXx/' \XXX
+ *                                  /XXXXXX\
+ *                                /XXXXXXXXXX\
+ *                              /XXXXXX/^\XXXXX\
+ *                             ~~~~~~~~   ~~~~~~~
+ */
 contract PrivatePool is ERC721TokenReceiver {
     using SafeTransferLib for address payable;
     using SafeTransferLib for address;
@@ -104,11 +132,13 @@ contract PrivatePool is ERC721TokenReceiver {
 
     receive() external payable {}
 
-    /// @dev This is only called when the base implementation contract is deployed. The following parameters are set:
+    /// @dev This is only called when the base implementation contract is deployed. The following immutable parameters
+    /// are set:
     /// - factory: The address of the factory contract
     /// - royaltyRegistry: The address of the royalty registry from manifold.xyz
     /// - stolenNftOracle: The address of the stolen NFT oracle
-    /// These are all stored in immutable storage, which enables all minimal proxy contracts to read them.
+    /// These are all stored in immutable storage, which enables all minimal proxy contracts to read them without
+    /// incurring additional deployment costs and re-initializing them at point of creation in the factory contract.
     constructor(address _factory, address _royaltyRegistry, address _stolenNftOracle) {
         factory = payable(_factory);
         royaltyRegistry = _royaltyRegistry;

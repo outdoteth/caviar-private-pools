@@ -8,6 +8,9 @@ import {ERC721} from "solmate/tokens/ERC721.sol";
 
 import {PrivatePool} from "./PrivatePool.sol";
 
+/// @title Private Pool Metadata
+/// @author out.eth (@outdoteth)
+/// @notice This contract is used to generate NFT metadata for private pools.
 contract PrivatePoolMetadata {
     /// @notice Returns the tokenURI for a pool with it's metadata.
     /// @param tokenId The private pool's token ID.
@@ -32,9 +35,8 @@ contract PrivatePoolMetadata {
     function attributes(uint256 tokenId) public view returns (string memory) {
         PrivatePool privatePool = PrivatePool(payable(address(uint160(tokenId))));
 
-        bytes memory _attributes;
         // forgefmt: disable-next-item
-        _attributes = abi.encodePacked(
+        bytes memory _attributes = abi.encodePacked(
             trait("Pool address", Strings.toHexString(address(privatePool))), ',',
             trait("Base token", Strings.toHexString(privatePool.baseToken())), ',',
             trait("NFT", Strings.toHexString(privatePool.nft())), ',',

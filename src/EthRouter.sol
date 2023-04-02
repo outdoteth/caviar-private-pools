@@ -10,6 +10,37 @@ import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
 import {PrivatePool} from "./PrivatePool.sol";
 import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 
+/// @title Eth Router
+/// @author out.eth (@outdoteth)
+/// @notice This contract is used to route buy, sell, and change orders to multiple pools in one transaction. It
+/// will route the orders to either a private pool or a public pool. If the order goes to a public pool, then users
+/// can choose whether or not they would like to pay royalties. The only base token which is supported is native ETH.
+/**
+ *                                     _H_
+ *                                    /___\
+ *                                    \888/
+ * ~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~U~^~^~^~^~^~^~^
+ *                       ~              |
+ *       ~                        o     |        ~
+ *                 ___        o         |
+ *        _,.--,.'`   `~'-.._    O      |
+ *       /_  .-"      _   /_\'.         |   ~
+ *      .-';'       (( `  \0/  `\       #
+ *     /__;          ((_  ,_     |  ,   #
+ *     .-;                  \_   /  #  _#,
+ *    /  ;    .-' /  _.--""-.\`~`   `#(('\\        ~
+ *    ;-';   /   / .'                  )) \\
+ *        ; /.--'.'                   ((   ))
+ *         \     |        ~            \\ ((
+ *          \    |                      )) `
+ *    ~      \   |                      `
+ *            \  |
+ *            .` `""-.
+ *          .'        \         ~               ~
+ *          |    |\    |
+ *          \   /  '-._|
+ *           \.'
+ */
 contract EthRouter is ERC721TokenReceiver {
     using SafeTransferLib for address;
 

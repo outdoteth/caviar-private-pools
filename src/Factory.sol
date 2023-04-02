@@ -11,6 +11,29 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {PrivatePool} from "./PrivatePool.sol";
 import {PrivatePoolMetadata} from "./PrivatePoolMetadata.sol";
 
+/// @title Caviar Private Pool Factory
+/// @author out.eth (@outdoteth)
+/// @notice This contract is used to create and initialize new private pools. Each time a private pool is created, a new
+/// NFT representing that private pool is minted to the creator. All protocol fees also accrue to this contract and can
+/// be withdrawn by the admin.
+/**
+ *
+ *       __________...----..____..-'``-..___
+ *     ,'.                                  ```--.._
+ *    :                                             ``._
+ *    |                           --                    ``.
+ *    |                 -0-           -.     -   -.        `.
+ *    :                     __           --            .     \
+ *     `._____________     (  `.   -.-      --  -   .   `     \
+ *        `-----------------\   \_.--------..__..--.._ `. `.   :
+ *                           `--'                     `-._ .   |
+ *                                                        `.`  |
+ *                                                          \` |
+ *                                                           \ |
+ *                                                           / \`.
+ *                                                          /  _\-'
+ *                                                         /_,'
+ */
 contract Factory is ERC721, Owned {
     using LibClone for address;
     using SafeTransferLib for address;
