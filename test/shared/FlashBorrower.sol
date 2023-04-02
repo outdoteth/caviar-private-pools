@@ -21,7 +21,7 @@ contract FlashBorrower is IERC3156FlashBorrower {
         }
     }
 
-    function onFlashLoan(address initiator, address token, uint256 tokenId, uint256 fee, bytes calldata data)
+    function onFlashLoan(address initiator, address token, uint256, uint256 fee, bytes calldata)
         public
         override
         returns (bytes32)
@@ -33,8 +33,8 @@ contract FlashBorrower is IERC3156FlashBorrower {
         // ... stuff stuff stuff
         // ... stuff stuff stuff
 
-        // return the NFT back to the lender
-        ERC721(token).safeTransferFrom(address(this), msg.sender, tokenId);
+        // approve the lender to transfer the NFT from this contract
+        ERC721(token).setApprovalForAll(address(lender), true);
 
         // approve the lender to take the fee from this contract
         if (lender.flashFeeToken() != address(0)) {
@@ -44,7 +44,7 @@ contract FlashBorrower is IERC3156FlashBorrower {
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 
-    function onERC721Received(address, address, uint256, bytes memory) public returns (bytes4) {
+    function onERC721Received(address, address, uint256, bytes memory) public pure returns (bytes4) {
         return this.onERC721Received.selector;
     }
 }

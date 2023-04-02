@@ -4,6 +4,7 @@ out = 'out'
 libs = ['lib']
 gas_reports = ["Factory", "EthRouter", "PrivatePool"]
 solc-version = "0.8.19"
+optimizer_runs = 200
 
 [fmt]
 wrap_comments = true

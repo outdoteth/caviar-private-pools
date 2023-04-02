@@ -71,7 +71,6 @@ contract EthRouter is ERC721TokenReceiver {
 
         // loop through and execute the the buys
         for (uint256 i = 0; i < buys.length; i++) {
-            uint256 netInputAmount;
             if (buys[i].isPublicPool) {
                 // execute the buy against a public pool
                 uint256 inputAmount = Pair(buys[i].pool).nftBuy{value: buys[i].baseTokenAmount}(

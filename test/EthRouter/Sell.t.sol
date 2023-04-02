@@ -80,7 +80,6 @@ contract SellTest is Fixture {
         minOutputAmount += outputAmount1 + outputAmount2;
         sells[0] = sell1;
         sells[1] = sell2;
-        uint256 balanceBefore = address(this).balance;
 
         // act
         vm.expectRevert(EthRouter.OutputAmountTooSmall.selector);
@@ -229,9 +228,7 @@ contract SellTest is Fixture {
 
         uint256 royaltyFee = outputAmount / tokenIds.length * royaltyFeeRate / 1e18 * tokenIds.length;
         outputAmount -= royaltyFee;
-
         minOutputAmount += outputAmount;
-        uint256 balanceBefore = address(this).balance;
 
         // act
         ethRouter.sell(sells, minOutputAmount, 0, true);

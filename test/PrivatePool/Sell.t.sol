@@ -127,7 +127,7 @@ contract SellTest is Fixture {
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
-        (uint256 netOutputAmount,, uint256 protocolFeeAmount) = privatePool.sellQuote(tokenIds.length * 1e18);
+        (,, uint256 protocolFeeAmount) = privatePool.sellQuote(tokenIds.length * 1e18);
 
         // act
         privatePool.sell(tokenIds, tokenWeights, proofs, stolenNftProofs);

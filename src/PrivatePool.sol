@@ -47,8 +47,6 @@ contract PrivatePool is ERC721TokenReceiver {
     error FeeRateTooHigh();
     error NotAvailableForFlashLoan();
     error FlashLoanFailed();
-    error FlashLoanedNftNotReturned();
-    error FlashLoanInProgress();
     error InvalidRoyaltyFee();
 
     /// @notice The address of the base ERC20 token.
@@ -87,9 +85,6 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @notice The merkle root of all the token weights in the pool. If the merkle root is set to bytes32(0) then all
     /// NFTs are set to have a weight of 1e18.
     bytes32 public merkleRoot;
-
-    /// @notice Whether or not a flash loan is currently in progress.
-    bool internal flashLoanInProgress;
 
     /// @notice The NFT oracle to check if an NFT is stolen.
     address public immutable stolenNftOracle;
@@ -280,9 +275,6 @@ contract PrivatePool is ERC721TokenReceiver {
     ) public returns (uint256 netOutputAmount, uint256 feeAmount, uint256 protocolFeeAmount) {
         // ~~~ Checks ~~~ //
 
-        // check that a flash loan is not currently in progress
-        if (flashLoanInProgress) revert FlashLoanInProgress();
-
         // calculate the sum of weights of the NFTs to sell
         uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
 
@@ -423,9 +415,6 @@ contract PrivatePool is ERC721TokenReceiver {
         MerkleMultiProof memory outputProof
     ) public payable returns (uint256 feeAmount, uint256 protocolFeeAmount) {
         // ~~~ Checks ~~~ //
-
-        // check that a flash loan is not currently in progress
-        if (flashLoanInProgress) revert FlashLoanInProgress();
 
         // check that the caller sent 0 ETH if base token is not ETH
         if (baseToken != address(0) && msg.value > 0) revert InvalidEthAmount();
@@ -681,12 +670,6 @@ contract PrivatePool is ERC721TokenReceiver {
         payable
         returns (bool)
     {
-        // check that a flash loan is not already in progress
-        if (flashLoanInProgress) revert FlashLoanInProgress();
-
-        // set the flash loan in progress flag
-        flashLoanInProgress = true;
-
         // check that the NFT is available for a flash loan
         if (!availableForFlashLoan(token, tokenId)) revert NotAvailableForFlashLoan();
 
@@ -706,14 +689,11 @@ contract PrivatePool is ERC721TokenReceiver {
         // check that flashloan was successful
         if (!success) revert FlashLoanFailed();
 
-        // check that the NFT was returned by the borrower
-        if (ERC721(token).ownerOf(tokenId) != address(this)) revert FlashLoanedNftNotReturned();
+        // transfer the NFT from the borrower
+        ERC721(token).safeTransferFrom(address(receiver), address(this), tokenId);
 
         // transfer the fee from the borrower
         if (baseToken != address(0)) ERC20(baseToken).transferFrom(msg.sender, address(this), fee);
-
-        // turn off the flash loan in progress flag
-        flashLoanInProgress = false;
 
         return success;
     }
