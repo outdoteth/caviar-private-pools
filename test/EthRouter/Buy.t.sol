@@ -189,5 +189,6 @@ contract BuyTest is Fixture {
 
         // assert
         assertEq(address(royaltyRecipient).balance, royaltyFee, "Should have paid royalties");
+        assertGt(address(royaltyRecipient).balance, 0, "Should have paid royalties");
     }
 }

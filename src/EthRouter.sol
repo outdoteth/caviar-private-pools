@@ -82,7 +82,7 @@ contract EthRouter is ERC721TokenReceiver {
     error PriceOutOfRange();
     error InvalidRoyaltyFee();
 
-    address public royaltyRegistry;
+    address public immutable royaltyRegistry;
 
     receive() external payable {}
 
@@ -176,7 +176,7 @@ contract EthRouter is ERC721TokenReceiver {
                     abi.decode(abi.encode(sells[i].stolenNftProofs), (ReservoirOracle.Message[]))
                 );
 
-                // pay the royalties if buyer has opted-in
+                // pay the royalties if seller has opted-in
                 if (payRoyalties) {
                     uint256 salePrice = outputAmount / sells[i].tokenIds.length;
                     for (uint256 j = 0; j < sells[i].tokenIds.length; j++) {
