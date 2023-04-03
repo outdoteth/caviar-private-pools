@@ -32,10 +32,10 @@ contract ExecuteTest is Fixture {
 
     function test_ItReturnsData() public {
         // arrange
-        uint256 tokenId = 1;
+        uint256 tokenId = 3;
 
         // act
-        bytes memory returnData = privatePool.execute(address(airdrop), abi.encodeCall(Airdrop.claim, (1)));
+        bytes memory returnData = privatePool.execute(address(airdrop), abi.encodeCall(Airdrop.claim, (3)));
 
         // assert
         assertEq(returnData, abi.encode(tokenId), "Should have succeeded");

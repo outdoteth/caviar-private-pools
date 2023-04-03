@@ -72,6 +72,7 @@ contract EthRouter is ERC721TokenReceiver {
         uint256[] inputTokenIds;
         uint256[] inputTokenWeights;
         PrivatePool.MerkleMultiProof inputProof;
+        IStolenNftOracle.Message[] stolenNftProofs;
         uint256[] outputTokenIds;
         uint256[] outputTokenWeights;
         PrivatePool.MerkleMultiProof outputProof;
@@ -273,6 +274,7 @@ contract EthRouter is ERC721TokenReceiver {
                 _change.inputTokenIds,
                 _change.inputTokenWeights,
                 _change.inputProof,
+                _change.stolenNftProofs,
                 _change.outputTokenIds,
                 _change.outputTokenWeights,
                 _change.outputProof

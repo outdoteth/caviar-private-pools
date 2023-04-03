@@ -372,62 +372,6 @@ contract PrivatePool is ERC721TokenReceiver {
         emit Sell(tokenIds, tokenWeights, netOutputAmount, feeAmount, protocolFeeAmount, royaltyFeeAmount);
     }
 
-    /// @notice Deposits base tokens and NFTs into the pool. The caller must approve the pool to transfer their NFTs and
-    /// base tokens.
-    /// @dev DO NOT call this function directly unless you know what you are doing. Instead, use a wrapper contract that
-    /// will check the current price is within the desired bounds.
-    /// @param tokenIds The token IDs of the NFTs to deposit.
-    /// @param baseTokenAmount The amount of base tokens to deposit.
-    function deposit(uint256[] calldata tokenIds, uint256 baseTokenAmount) public payable {
-        // ~~~ Checks ~~~ //
-
-        // ensure the caller sent a valid amount of ETH if base token is ETH or that the caller sent 0 ETH if base token
-        // is not ETH
-        if ((baseToken == address(0) && msg.value != baseTokenAmount) || (msg.value > 0 && baseToken != address(0))) {
-            revert InvalidEthAmount();
-        }
-
-        // ~~~ Interactions ~~~ //
-
-        // transfer the nfts from the caller
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
-        }
-
-        if (baseToken != address(0)) {
-            // transfer the base tokens from the caller
-            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenAmount);
-        }
-
-        // emit the deposit event
-        emit Deposit(tokenIds, baseTokenAmount);
-    }
-
-    /// @notice Withdraws NFTs and tokens from the pool. Can only be called by the owner of the pool.
-    /// @param _nft The address of the NFT.
-    /// @param tokenIds The token IDs of the NFTs to withdraw.
-    /// @param token The address of the token to withdraw.
-    /// @param tokenAmount The amount of tokens to withdraw.
-    function withdraw(address _nft, uint256[] calldata tokenIds, address token, uint256 tokenAmount) public onlyOwner {
-        // ~~~ Interactions ~~~ //
-
-        // transfer the nfts to the caller
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            ERC721(_nft).safeTransferFrom(address(this), msg.sender, tokenIds[i]);
-        }
-
-        if (token == address(0)) {
-            // transfer the ETH to the caller
-            msg.sender.safeTransferETH(tokenAmount);
-        } else {
-            // transfer the tokens to the caller
-            ERC20(token).transfer(msg.sender, tokenAmount);
-        }
-
-        // emit the withdraw event
-        emit Withdraw(_nft, tokenIds, token, tokenAmount);
-    }
-
     /// @notice Changes a set of NFTs that the caller owns for another set of NFTs in the pool. The caller must approve
     /// the pool to transfer the NFTs. The sum of the caller's NFT weights must be less than or equal to the sum of the
     /// output pool NFTs weights. The caller must also pay a fee depending the net input weight and change fee amount.
@@ -441,6 +385,7 @@ contract PrivatePool is ERC721TokenReceiver {
         uint256[] memory inputTokenIds,
         uint256[] memory inputTokenWeights,
         MerkleMultiProof memory inputProof,
+        IStolenNftOracle.Message[] memory stolenNftProofs,
         uint256[] memory outputTokenIds,
         uint256[] memory outputTokenWeights,
         MerkleMultiProof memory outputProof
@@ -449,6 +394,11 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // check that the caller sent 0 ETH if base token is not ETH
         if (baseToken != address(0) && msg.value > 0) revert InvalidEthAmount();
+
+        // check that NFTs are not stolen
+        if (useStolenNftOracle) {
+            IStolenNftOracle(stolenNftOracle).validateTokensAreNotStolen(nft, inputTokenIds, stolenNftProofs);
+        }
 
         // fix stack too deep
         {
@@ -522,6 +472,62 @@ contract PrivatePool is ERC721TokenReceiver {
         } else {
             revert();
         }
+    }
+
+    /// @notice Deposits base tokens and NFTs into the pool. The caller must approve the pool to transfer their NFTs and
+    /// base tokens.
+    /// @dev DO NOT call this function directly unless you know what you are doing. Instead, use a wrapper contract that
+    /// will check the current price is within the desired bounds.
+    /// @param tokenIds The token IDs of the NFTs to deposit.
+    /// @param baseTokenAmount The amount of base tokens to deposit.
+    function deposit(uint256[] calldata tokenIds, uint256 baseTokenAmount) public payable {
+        // ~~~ Checks ~~~ //
+
+        // ensure the caller sent a valid amount of ETH if base token is ETH or that the caller sent 0 ETH if base token
+        // is not ETH
+        if ((baseToken == address(0) && msg.value != baseTokenAmount) || (msg.value > 0 && baseToken != address(0))) {
+            revert InvalidEthAmount();
+        }
+
+        // ~~~ Interactions ~~~ //
+
+        // transfer the nfts from the caller
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
+        }
+
+        if (baseToken != address(0)) {
+            // transfer the base tokens from the caller
+            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), baseTokenAmount);
+        }
+
+        // emit the deposit event
+        emit Deposit(tokenIds, baseTokenAmount);
+    }
+
+    /// @notice Withdraws NFTs and tokens from the pool. Can only be called by the owner of the pool.
+    /// @param _nft The address of the NFT.
+    /// @param tokenIds The token IDs of the NFTs to withdraw.
+    /// @param token The address of the token to withdraw.
+    /// @param tokenAmount The amount of tokens to withdraw.
+    function withdraw(address _nft, uint256[] calldata tokenIds, address token, uint256 tokenAmount) public onlyOwner {
+        // ~~~ Interactions ~~~ //
+
+        // transfer the nfts to the caller
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            ERC721(_nft).safeTransferFrom(address(this), msg.sender, tokenIds[i]);
+        }
+
+        if (token == address(0)) {
+            // transfer the ETH to the caller
+            msg.sender.safeTransferETH(tokenAmount);
+        } else {
+            // transfer the tokens to the caller
+            ERC20(token).transfer(msg.sender, tokenAmount);
+        }
+
+        // emit the withdraw event
+        emit Withdraw(_nft, tokenIds, token, tokenAmount);
     }
 
     /// @notice Sets the virtual base token reserves and virtual NFT reserves. Can only be called by the owner of the
@@ -605,89 +611,6 @@ contract PrivatePool is ERC721TokenReceiver {
         setFeeRate(newFeeRate);
         setUseStolenNftOracle(newUseStolenNftOracle);
         setPayRoyalties(newPayRoyalties);
-    }
-
-    /// @notice Returns the required input of buying a given amount of NFTs inclusive of the fee which is dependent on
-    /// the currently set fee rate.
-    /// @param outputAmount The amount of NFTs to buy multiplied by 1e18.
-    /// @return netInputAmount The required input amount of base tokens inclusive of the fee.
-    /// @return feeAmount The fee amount.
-    function buyQuote(uint256 outputAmount)
-        public
-        view
-        returns (uint256 netInputAmount, uint256 feeAmount, uint256 protocolFeeAmount)
-    {
-        // calculate the input amount based on xy=k invariant and round up by 1 wei
-        uint256 inputAmount =
-            FixedPointMathLib.mulDivUp(outputAmount, virtualBaseTokenReserves, (virtualNftReserves - outputAmount));
-
-        protocolFeeAmount = inputAmount * Factory(factory).protocolFeeRate() / 10_000;
-        feeAmount = inputAmount * feeRate / 10_000;
-        netInputAmount = inputAmount + feeAmount + protocolFeeAmount;
-    }
-
-    /// @notice Returns the output amount of selling a given amount of NFTs inclusive of the fee which is dependent on
-    /// the currently set fee rate.
-    /// @param inputAmount The amount of NFTs to sell multiplied by 1e18.
-    /// @return netOutputAmount The output amount of base tokens inclusive of the fee.
-    /// @return feeAmount The fee amount.
-    function sellQuote(uint256 inputAmount)
-        public
-        view
-        returns (uint256 netOutputAmount, uint256 feeAmount, uint256 protocolFeeAmount)
-    {
-        // calculate the output amount based on xy=k invariant
-        uint256 outputAmount = inputAmount * virtualBaseTokenReserves / (virtualNftReserves + inputAmount);
-
-        protocolFeeAmount = outputAmount * Factory(factory).protocolFeeRate() / 10_000;
-        feeAmount = outputAmount * feeRate / 10_000;
-        netOutputAmount = outputAmount - feeAmount - protocolFeeAmount;
-    }
-
-    /// @notice Returns the fee required to change a given amount of NFTs. The fee is based on the current changeFee
-    /// (which contains 4 decimals of precision) multiplied by some exponent depending on the base token decimals.
-    /// @param inputAmount The amount of NFTs to change multiplied by 1e18.
-    /// @return feeAmount The fee amount.
-    /// @return protocolFeeAmount The protocol fee amount.
-    function changeFeeQuote(uint256 inputAmount) public view returns (uint256 feeAmount, uint256 protocolFeeAmount) {
-        // multiply the changeFee to get the fee per NFT (4 decimals of accuracy)
-        uint256 exponent = baseToken == address(0) ? 18 - 4 : ERC20(baseToken).decimals() - 4;
-        uint256 feePerNft = changeFee * 10 ** exponent;
-
-        feeAmount = inputAmount * feePerNft / 1e18;
-        protocolFeeAmount = feeAmount * Factory(factory).protocolFeeRate() / 10_000;
-    }
-
-    /// @notice Returns the price of the pool to 18 decimals of accuracy.
-    /// @return price The price of the pool.
-    function price() public view returns (uint256) {
-        // ensure that the exponent is always to 18 decimals of accuracy
-        uint256 exponent = baseToken == address(0) ? 18 : (36 - ERC20(baseToken).decimals());
-        return (virtualBaseTokenReserves * 10 ** exponent) / virtualNftReserves;
-    }
-
-    /// @notice Returns the fee required to flash swap a given NFT.
-    /// @return feeAmount The fee amount.
-    function flashFee(address, uint256) public view returns (uint256) {
-        return changeFee;
-    }
-
-    /// @notice Returns the token that is used to pay the flash fee.
-    function flashFeeToken() public view returns (address) {
-        return baseToken;
-    }
-
-    /// @notice Returns whether or not an NFT is available for a flash loan.
-    /// @param token The address of the NFT contract.
-    /// @param tokenId The ID of the NFT.
-    /// @return available Whether or not the NFT is available for a flash loan.
-    function availableForFlashLoan(address token, uint256 tokenId) public view returns (bool) {
-        // return if the NFT is owned by this contract
-        try ERC721(token).ownerOf(tokenId) returns (address result) {
-            return result == address(this);
-        } catch {
-            return false;
-        }
     }
 
     /// @notice Executes a flash loan.
@@ -782,6 +705,89 @@ contract PrivatePool is ERC721TokenReceiver {
 
             // revert if the royalty fee is greater than the sale price
             if (royaltyFee > salePrice) revert InvalidRoyaltyFee();
+        }
+    }
+
+    /// @notice Returns the required input of buying a given amount of NFTs inclusive of the fee which is dependent on
+    /// the currently set fee rate.
+    /// @param outputAmount The amount of NFTs to buy multiplied by 1e18.
+    /// @return netInputAmount The required input amount of base tokens inclusive of the fee.
+    /// @return feeAmount The fee amount.
+    function buyQuote(uint256 outputAmount)
+        public
+        view
+        returns (uint256 netInputAmount, uint256 feeAmount, uint256 protocolFeeAmount)
+    {
+        // calculate the input amount based on xy=k invariant and round up by 1 wei
+        uint256 inputAmount =
+            FixedPointMathLib.mulDivUp(outputAmount, virtualBaseTokenReserves, (virtualNftReserves - outputAmount));
+
+        protocolFeeAmount = inputAmount * Factory(factory).protocolFeeRate() / 10_000;
+        feeAmount = inputAmount * feeRate / 10_000;
+        netInputAmount = inputAmount + feeAmount + protocolFeeAmount;
+    }
+
+    /// @notice Returns the output amount of selling a given amount of NFTs inclusive of the fee which is dependent on
+    /// the currently set fee rate.
+    /// @param inputAmount The amount of NFTs to sell multiplied by 1e18.
+    /// @return netOutputAmount The output amount of base tokens inclusive of the fee.
+    /// @return feeAmount The fee amount.
+    function sellQuote(uint256 inputAmount)
+        public
+        view
+        returns (uint256 netOutputAmount, uint256 feeAmount, uint256 protocolFeeAmount)
+    {
+        // calculate the output amount based on xy=k invariant
+        uint256 outputAmount = inputAmount * virtualBaseTokenReserves / (virtualNftReserves + inputAmount);
+
+        protocolFeeAmount = outputAmount * Factory(factory).protocolFeeRate() / 10_000;
+        feeAmount = outputAmount * feeRate / 10_000;
+        netOutputAmount = outputAmount - feeAmount - protocolFeeAmount;
+    }
+
+    /// @notice Returns the fee required to change a given amount of NFTs. The fee is based on the current changeFee
+    /// (which contains 4 decimals of precision) multiplied by some exponent depending on the base token decimals.
+    /// @param inputAmount The amount of NFTs to change multiplied by 1e18.
+    /// @return feeAmount The fee amount.
+    /// @return protocolFeeAmount The protocol fee amount.
+    function changeFeeQuote(uint256 inputAmount) public view returns (uint256 feeAmount, uint256 protocolFeeAmount) {
+        // multiply the changeFee to get the fee per NFT (4 decimals of accuracy)
+        uint256 exponent = baseToken == address(0) ? 18 - 4 : ERC20(baseToken).decimals() - 4;
+        uint256 feePerNft = changeFee * 10 ** exponent;
+
+        feeAmount = inputAmount * feePerNft / 1e18;
+        protocolFeeAmount = feeAmount * Factory(factory).protocolFeeRate() / 10_000;
+    }
+
+    /// @notice Returns the price of the pool to 18 decimals of accuracy.
+    /// @return price The price of the pool.
+    function price() public view returns (uint256) {
+        // ensure that the exponent is always to 18 decimals of accuracy
+        uint256 exponent = baseToken == address(0) ? 18 : (36 - ERC20(baseToken).decimals());
+        return (virtualBaseTokenReserves * 10 ** exponent) / virtualNftReserves;
+    }
+
+    /// @notice Returns the fee required to flash swap a given NFT.
+    /// @return feeAmount The fee amount.
+    function flashFee(address, uint256) public view returns (uint256) {
+        return changeFee;
+    }
+
+    /// @notice Returns the token that is used to pay the flash fee.
+    function flashFeeToken() public view returns (address) {
+        return baseToken;
+    }
+
+    /// @notice Returns whether or not an NFT is available for a flash loan.
+    /// @param token The address of the NFT contract.
+    /// @param tokenId The ID of the NFT.
+    /// @return available Whether or not the NFT is available for a flash loan.
+    function availableForFlashLoan(address token, uint256 tokenId) public view returns (bool) {
+        // return if the NFT is owned by this contract
+        try ERC721(token).ownerOf(tokenId) returns (address result) {
+            return result == address(this);
+        } catch {
+            return false;
         }
     }
 }

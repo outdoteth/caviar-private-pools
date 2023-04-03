@@ -43,9 +43,10 @@ contract FlashloanTest is Fixture {
 
         // assert
         assertEq(address(privatePool).balance, balanceBefore + fee, "Should have paid fee");
+        assertGt(address(privatePool).balance, 0, "Should have paid fee");
     }
 
-    function test_PaysFlashLoanFeeWithBasetoken() public {
+    function test_PaysFlashLoanFeeWithBaseToken() public {
         // arrange
         stdstore.target(address(privatePool)).sig("baseToken()").checked_write(address(shibaInu));
         uint256 fee = privatePool.flashFee(address(0), 1);

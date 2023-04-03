@@ -73,6 +73,17 @@ contract InitializeTest is Fixture {
         );
     }
 
+    function test_RevertIf_FeeRateIsTooHigh() public {
+        // arrange
+        feeRate = 5_001;
+
+        // act
+        vm.expectRevert(PrivatePool.FeeRateTooHigh.selector);
+        privatePool.initialize(
+            baseToken, nft, virtualBaseTokenReserves, virtualNftReserves, changeFee, feeRate, merkleRoot, true, false
+        );
+    }
+
     function testFuzz_InitializesStateVariables(
         address _baseToken,
         address _nft,

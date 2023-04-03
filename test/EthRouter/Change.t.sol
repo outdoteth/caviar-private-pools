@@ -33,18 +33,18 @@ contract ChangeTest is Fixture {
             outputTokenIds[i] = i;
         }
 
-        changes.push(
-            EthRouter.Change({
-                pool: payable(address(privatePool)),
-                nft: address(milady),
-                inputTokenIds: inputTokenIds,
-                inputTokenWeights: inputTokenWeights,
-                inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
-                outputTokenIds: outputTokenIds,
-                outputTokenWeights: outputTokenWeights,
-                outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0))
-            })
-        );
+        EthRouter.Change[] memory changes = new EthRouter.Change[](1);
+        changes[0] = EthRouter.Change({
+            pool: payable(address(privatePool)),
+            nft: address(milady),
+            inputTokenIds: inputTokenIds,
+            inputTokenWeights: inputTokenWeights,
+            inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
+            stolenNftProofs: new IStolenNftOracle.Message[](0),
+            outputTokenIds: outputTokenIds,
+            outputTokenWeights: outputTokenWeights,
+            outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0))
+        });
 
         (uint256 changeFee,) = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
         uint256 balanceBefore = address(this).balance;
@@ -67,18 +67,18 @@ contract ChangeTest is Fixture {
             outputTokenIds[i] = i;
         }
 
-        changes.push(
-            EthRouter.Change({
-                pool: payable(address(privatePool)),
-                nft: address(milady),
-                inputTokenIds: inputTokenIds,
-                inputTokenWeights: inputTokenWeights,
-                inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
-                outputTokenIds: outputTokenIds,
-                outputTokenWeights: outputTokenWeights,
-                outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0))
-            })
-        );
+        EthRouter.Change[] memory changes = new EthRouter.Change[](1);
+        changes[0] = EthRouter.Change({
+            pool: payable(address(privatePool)),
+            nft: address(milady),
+            inputTokenIds: inputTokenIds,
+            inputTokenWeights: inputTokenWeights,
+            inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
+            stolenNftProofs: new IStolenNftOracle.Message[](0),
+            outputTokenIds: outputTokenIds,
+            outputTokenWeights: outputTokenWeights,
+            outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0))
+        });
 
         (uint256 changeFee,) = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
 
@@ -106,18 +106,18 @@ contract ChangeTest is Fixture {
             outputTokenIds[i] = i;
         }
 
-        changes.push(
-            EthRouter.Change({
-                pool: payable(address(privatePool)),
-                nft: address(milady),
-                inputTokenIds: inputTokenIds,
-                inputTokenWeights: inputTokenWeights,
-                inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
-                outputTokenIds: outputTokenIds,
-                outputTokenWeights: outputTokenWeights,
-                outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0))
-            })
-        );
+        EthRouter.Change[] memory changes = new EthRouter.Change[](1);
+        changes[0] = EthRouter.Change({
+            pool: payable(address(privatePool)),
+            nft: address(milady),
+            inputTokenIds: inputTokenIds,
+            inputTokenWeights: inputTokenWeights,
+            inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
+            stolenNftProofs: new IStolenNftOracle.Message[](0),
+            outputTokenIds: outputTokenIds,
+            outputTokenWeights: outputTokenWeights,
+            outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0))
+        });
 
         (uint256 changeFee,) = privatePool.changeFeeQuote(inputTokenIds.length * 1e18);
 
@@ -130,6 +130,7 @@ contract ChangeTest is Fixture {
                     changes[0].inputTokenIds,
                     changes[0].inputTokenWeights,
                     changes[0].inputProof,
+                    changes[0].stolenNftProofs,
                     changes[0].outputTokenIds,
                     changes[0].outputTokenWeights,
                     changes[0].outputProof

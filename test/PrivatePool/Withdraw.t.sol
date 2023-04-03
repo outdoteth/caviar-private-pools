@@ -126,4 +126,11 @@ contract WithdrawTest is Fixture {
             assertEq(milady.ownerOf(tokenIds[i]), address(this), "Should have transferred nfts to caller");
         }
     }
+
+    function test_RevertIf_CallerIsNotOwner() public {
+        // act
+        vm.prank(address(0xbabe));
+        vm.expectRevert(PrivatePool.Unauthorized.selector);
+        privatePool.withdraw(address(nft), tokenIds, address(0), 0);
+    }
 }

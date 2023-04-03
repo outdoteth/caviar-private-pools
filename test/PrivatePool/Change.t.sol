@@ -27,6 +27,7 @@ contract ChangeTest is Fixture {
     uint256[] inputTokenIds;
     uint256[] inputTokenWeights;
     PrivatePool.MerkleMultiProof inputProof;
+    IStolenNftOracle.Message[] stolenNftProofs;
 
     uint256[] outputTokenIds;
     uint256[] outputTokenWeights;
@@ -64,7 +65,13 @@ contract ChangeTest is Fixture {
         vm.expectEmit(true, true, true, true);
         emit Change(inputTokenIds, inputTokenWeights, outputTokenIds, outputTokenWeights, feeAmount, protocolFeeAmount);
         privatePool.change{value: feeAmount}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
     }
 
@@ -81,7 +88,13 @@ contract ChangeTest is Fixture {
 
         // act
         privatePool.change{value: feeAmount}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
 
         // assert
@@ -103,7 +116,13 @@ contract ChangeTest is Fixture {
 
         // act
         privatePool.change{value: feeAmount}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
 
         // assert
@@ -126,7 +145,13 @@ contract ChangeTest is Fixture {
 
         // act
         privatePool.change{value: feeAmount + protocolFeeAmount}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
 
         // assert
@@ -168,7 +193,13 @@ contract ChangeTest is Fixture {
 
         // act
         privatePool.change(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
 
         // assert
@@ -192,7 +223,13 @@ contract ChangeTest is Fixture {
 
         // act
         privatePool.change{value: feeAmount + 1e18}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
 
         // assert
@@ -234,7 +271,13 @@ contract ChangeTest is Fixture {
 
         // act
         privatePool.change(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
 
         // assert
@@ -264,7 +307,13 @@ contract ChangeTest is Fixture {
         // act
         vm.expectRevert(PrivatePool.InvalidEthAmount.selector);
         privatePool.change{value: 1e18}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
     }
 
@@ -282,7 +331,13 @@ contract ChangeTest is Fixture {
         // act
         vm.expectRevert(PrivatePool.InvalidEthAmount.selector);
         privatePool.change{value: feeAmount - 1}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
     }
 
@@ -299,7 +354,13 @@ contract ChangeTest is Fixture {
         // act
         vm.expectRevert(PrivatePool.InsufficientInputWeight.selector);
         privatePool.change{value: feeAmount}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
     }
 
@@ -338,7 +399,13 @@ contract ChangeTest is Fixture {
         vm.expectEmit(true, true, true, true);
         emit Change(inputTokenIds, inputTokenWeights, outputTokenIds, outputTokenWeights, feeAmount, protocolFeeAmount);
         privatePool.change{value: feeAmount}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
     }
 
@@ -374,7 +441,13 @@ contract ChangeTest is Fixture {
         // act
         vm.expectRevert(PrivatePool.InsufficientInputWeight.selector);
         privatePool.change{value: feeAmount}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
     }
 
@@ -411,7 +484,38 @@ contract ChangeTest is Fixture {
         // act
         vm.expectRevert(PrivatePool.InvalidMerkleProof.selector);
         privatePool.change{value: feeAmount}(
-            inputTokenIds, inputTokenWeights, inputProof, outputTokenIds, outputTokenWeights, outputProof
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
+        );
+    }
+
+    function test_RevertIf_NftsAreMarkedAsStolen() public {
+        // arrange
+        inputTokenIds.push(0);
+        inputTokenIds.push(1);
+        inputTokenIds.push(2);
+
+        outputTokenIds.push(3);
+        outputTokenIds.push(4);
+        outputTokenIds.push(5);
+        (uint256 feeAmount,) = privatePool.changeFeeQuote(outputTokenIds.length * 1e18);
+        stolenNftOracle.setStolenNft(address(milady), 2);
+
+        // act
+        vm.expectRevert(StolenNftOracle.StolenNft.selector);
+        privatePool.change{value: feeAmount}(
+            inputTokenIds,
+            inputTokenWeights,
+            inputProof,
+            stolenNftProofs,
+            outputTokenIds,
+            outputTokenWeights,
+            outputProof
         );
     }
 }
