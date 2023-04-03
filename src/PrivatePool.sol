@@ -378,6 +378,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param inputTokenIds The token IDs of the NFTs to change.
     /// @param inputTokenWeights The weights of the NFTs to change.
     /// @param inputProof The merkle proof for the weights of each NFT to change.
+    /// @param stolenNftProofs The proofs that show each input NFT is not stolen.
     /// @param outputTokenIds The token IDs of the NFTs to receive.
     /// @param outputTokenWeights The weights of the NFTs to receive.
     /// @param outputProof The merkle proof for the weights of each NFT to receive.
@@ -685,29 +686,6 @@ contract PrivatePool is ERC721TokenReceiver {
         return sum;
     }
 
-    /// @notice Gets the royalty and recipient for a given NFT and sale price. Looks up the royalty info from the
-    /// manifold registry.
-    /// @param tokenId The token ID of the NFT.
-    /// @param salePrice The sale price of the NFT.
-    /// @return royaltyFee The royalty fee to pay.
-    /// @return recipient The address to pay the royalty fee to.
-    function _getRoyalty(uint256 tokenId, uint256 salePrice)
-        internal
-        view
-        returns (uint256 royaltyFee, address recipient)
-    {
-        // get the royalty lookup address
-        address lookupAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(nft);
-
-        if (IERC2981(lookupAddress).supportsInterface(type(IERC2981).interfaceId)) {
-            // get the royalty fee from the registry
-            (recipient, royaltyFee) = IERC2981(lookupAddress).royaltyInfo(tokenId, salePrice);
-
-            // revert if the royalty fee is greater than the sale price
-            if (royaltyFee > salePrice) revert InvalidRoyaltyFee();
-        }
-    }
-
     /// @notice Returns the required input of buying a given amount of NFTs inclusive of the fee which is dependent on
     /// the currently set fee rate.
     /// @param outputAmount The amount of NFTs to buy multiplied by 1e18.
@@ -788,6 +766,29 @@ contract PrivatePool is ERC721TokenReceiver {
             return result == address(this);
         } catch {
             return false;
+        }
+    }
+
+    /// @notice Gets the royalty and recipient for a given NFT and sale price. Looks up the royalty info from the
+    /// manifold registry.
+    /// @param tokenId The token ID of the NFT.
+    /// @param salePrice The sale price of the NFT.
+    /// @return royaltyFee The royalty fee to pay.
+    /// @return recipient The address to pay the royalty fee to.
+    function _getRoyalty(uint256 tokenId, uint256 salePrice)
+        internal
+        view
+        returns (uint256 royaltyFee, address recipient)
+    {
+        // get the royalty lookup address
+        address lookupAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(nft);
+
+        if (IERC2981(lookupAddress).supportsInterface(type(IERC2981).interfaceId)) {
+            // get the royalty fee from the registry
+            (recipient, royaltyFee) = IERC2981(lookupAddress).royaltyInfo(tokenId, salePrice);
+
+            // revert if the royalty fee is greater than the sale price
+            if (royaltyFee > salePrice) revert InvalidRoyaltyFee();
         }
     }
 }
