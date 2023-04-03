@@ -24,7 +24,6 @@ import {LibClone} from "solady/utils/LibClone.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721} from "solmate/tokens/ERC721.sol";
 import {Owned} from "solmate/auth/Owned.sol";
-import {Strings} from "openzeppelin/utils/Strings.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {PrivatePool} from "./PrivatePool.sol";
@@ -125,13 +124,6 @@ contract Factory is ERC721, Owned {
         emit Create(address(privatePool), tokenIds, baseTokenAmount);
     }
 
-    /// @notice Predicts the deployment address of a new private pool.
-    /// @param salt The salt that will used on deployment.
-    /// @return predictedAddress The predicted deployment address of the private pool.
-    function predictPoolDeploymentAddress(bytes32 salt) public view returns (address predictedAddress) {
-        predictedAddress = privatePoolImplementation.predictDeterministicAddress(salt, address(this));
-    }
-
     /// @notice Sets private pool metadata contract.
     /// @param _privatePoolMetadata The private pool metadata contract.
     function setPrivatePoolMetadata(address _privatePoolMetadata) public onlyOwner {
@@ -168,5 +160,12 @@ contract Factory is ERC721, Owned {
     /// @return uri The token URI.
     function tokenURI(uint256 id) public view override returns (string memory) {
         return PrivatePoolMetadata(privatePoolMetadata).tokenURI(id);
+    }
+
+    /// @notice Predicts the deployment address of a new private pool.
+    /// @param salt The salt that will used on deployment.
+    /// @return predictedAddress The predicted deployment address of the private pool.
+    function predictPoolDeploymentAddress(bytes32 salt) public view returns (address predictedAddress) {
+        predictedAddress = privatePoolImplementation.predictDeterministicAddress(salt, address(this));
     }
 }
