@@ -409,7 +409,7 @@ contract ChangeTest is Fixture {
         );
     }
 
-    function test_RevertIf_SummedInputWeightIsLessThanSummedOutputWeight() public {
+    function test_RevertIf_MerkleSummedInputWeightIsLessThanSummedOutputWeight() public {
         // arrange
         privatePool = new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
         privatePool.initialize(
