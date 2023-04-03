@@ -1,25 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
-import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
-import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
-import {IERC3156FlashBorrower} from "openzeppelin/interfaces/IERC3156FlashLender.sol";
-
-import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
-import {Factory} from "./Factory.sol";
-
-/// @title Private Pool
-/// @author out.eth (@outdoteth)
-/// @notice A private pool is a an NFT AMM controlled by a single owner with concentrated liquidity, custom fee rates,
-/// stolen NFT filtering, custom NFT weightings, royalty support, and flash loans. You can create a pool and change
-/// these parameters to your liking. Deposit NFTs and base tokens (or ETH) into the pool to enable trading. Earn fees on
-/// each trade.
-/**
+/*
  *                                   ____
  *                                /\|    ~~\
  *                              /'  |   ,-. `\
@@ -41,6 +23,25 @@ import {Factory} from "./Factory.sol";
  *                              /XXXXXX/^\XXXXX\
  *                             ~~~~~~~~   ~~~~~~~
  */
+
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
+import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
+import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
+import {IERC3156FlashBorrower} from "openzeppelin/interfaces/IERC3156FlashLender.sol";
+
+import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
+import {Factory} from "./Factory.sol";
+
+/// @title Private Pool
+/// @author out.eth (@outdoteth)
+/// @notice A private pool is a an NFT AMM controlled by a single owner with concentrated liquidity, custom fee rates,
+/// stolen NFT filtering, custom NFT weightings, royalty support, and flash loans. You can create a pool and change
+/// these parameters to your liking. Deposit NFTs and base tokens (or ETH) into the pool to enable trading. Earn fees on
+/// each trade.
 contract PrivatePool is ERC721TokenReceiver {
     using SafeTransferLib for address payable;
     using SafeTransferLib for address;

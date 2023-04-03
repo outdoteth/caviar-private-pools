@@ -1,21 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
-import {Pair, ReservoirOracle} from "caviar/Pair.sol";
-import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
-
-import {PrivatePool} from "./PrivatePool.sol";
-import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
-
-/// @title Eth Router
-/// @author out.eth (@outdoteth)
-/// @notice This contract is used to route buy, sell, and change orders to multiple pools in one transaction. It
-/// will route the orders to either a private pool or a public pool. If the order goes to a public pool, then users
-/// can choose whether or not they would like to pay royalties. The only base token which is supported is native ETH.
-/**
+/*
  *                                     _H_
  *                                    /___\
  *                                    \888/
@@ -41,6 +27,21 @@ import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
  *          \   /  '-._|
  *           \.'
  */
+
+import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
+import {Pair, ReservoirOracle} from "caviar/Pair.sol";
+import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
+
+import {PrivatePool} from "./PrivatePool.sol";
+import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
+
+/// @title Eth Router
+/// @author out.eth (@outdoteth)
+/// @notice This contract is used to route buy, sell, and change orders to multiple pools in one transaction. It
+/// will route the orders to either a private pool or a public pool. If the order goes to a public pool, then users
+/// can choose whether or not they would like to pay royalties. The only base token which is supported is native ETH.
 contract EthRouter is ERC721TokenReceiver {
     using SafeTransferLib for address;
 

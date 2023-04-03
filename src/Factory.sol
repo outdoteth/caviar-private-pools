@@ -1,22 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {LibClone} from "solady/utils/LibClone.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ERC721} from "solmate/tokens/ERC721.sol";
-import {Owned} from "solmate/auth/Owned.sol";
-import {Strings} from "openzeppelin/utils/Strings.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
-
-import {PrivatePool} from "./PrivatePool.sol";
-import {PrivatePoolMetadata} from "./PrivatePoolMetadata.sol";
-
-/// @title Caviar Private Pool Factory
-/// @author out.eth (@outdoteth)
-/// @notice This contract is used to create and initialize new private pools. Each time a private pool is created, a new
-/// NFT representing that private pool is minted to the creator. All protocol fees also accrue to this contract and can
-/// be withdrawn by the admin.
-/**
+/*
  *
  *       __________...----..____..-'``-..___
  *     ,'.                                  ```--.._
@@ -34,6 +19,22 @@ import {PrivatePoolMetadata} from "./PrivatePoolMetadata.sol";
  *                                                          /  _\-'
  *                                                         /_,'
  */
+
+import {LibClone} from "solady/utils/LibClone.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC721} from "solmate/tokens/ERC721.sol";
+import {Owned} from "solmate/auth/Owned.sol";
+import {Strings} from "openzeppelin/utils/Strings.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+
+import {PrivatePool} from "./PrivatePool.sol";
+import {PrivatePoolMetadata} from "./PrivatePoolMetadata.sol";
+
+/// @title Caviar Private Pool Factory
+/// @author out.eth (@outdoteth)
+/// @notice This contract is used to create and initialize new private pools. Each time a private pool is created, a new
+/// NFT representing that private pool is minted to the creator. All protocol fees also accrue to this contract and can
+/// be withdrawn by the admin.
 contract Factory is ERC721, Owned {
     using LibClone for address;
     using SafeTransferLib for address;
