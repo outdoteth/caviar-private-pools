@@ -37,16 +37,6 @@
   },
   {
     "inputs": [],
-    "name": "FlashLoanInProgress",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "FlashLoanedNftNotReturned",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "InsufficientInputWeight",
     "type": "error"
   },
@@ -531,6 +521,33 @@
         "internalType": "struct PrivatePool.MerkleMultiProof",
         "name": "inputProof",
         "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "id",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes",
+            "name": "payload",
+            "type": "bytes"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct IStolenNftOracle.Message[]",
+        "name": "stolenNftProofs",
+        "type": "tuple[]"
       },
       {
         "internalType": "uint256[]",
