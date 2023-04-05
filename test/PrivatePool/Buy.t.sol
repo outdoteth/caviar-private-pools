@@ -38,8 +38,6 @@ contract BuyTest is Fixture {
         for (uint256 i = 0; i < 5; i++) {
             milady.mint(address(privatePool), i);
         }
-
-        milady.mint(address(this), 100);
     }
 
     function test_ReturnsNetInputAmount() public {
