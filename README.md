@@ -22,9 +22,42 @@ forge test --gas-report --ffi
 
 ## Contracts overview
 
-| Contract                | LOC |
-| ----------------------- | --- |
-| EthRouter.sol           | 177 |
-| Factory.sol             | 83  |
-| PrivatePool.sol         | 375 |
-| PrivatePoolMetadata.sol | 90  |
+| Contract                | LOC | Description                                         | Libraries                                                     |
+| ----------------------- | --- | --------------------------------------------------- | ------------------------------------------------------------- |
+| EthRouter.sol           | 177 | Routes trades to various pools                      | `solmate` `openzeppelin` `royalty-registry-solidity` `caviar` |
+| Factory.sol             | 83  | Creates new pools and also accrues protocol fees    | `solady` `solmate`                                            |
+| PrivatePool.sol         | 375 | Core AMM logic for each newly deployed private pool | `solady` `solmate` `openzeppelin` `royalty-registry-solidity` |
+| PrivatePoolMetadata.sol | 90  | Generates NFT metadata and svgs for each pool       | `solmate` `openzeppelin`                                      |
+
+## External imports
+
+- **solmate/tokens/ERC721.sol**
+  - [src/EthRouter.sol](./src/EthRouter.sol)
+  - [src/Factory.sol](./src/Factory.sol)
+  - [src/PrivatePool.sol](./src/PrivatePool.sol)
+- **solmate/utils/SafeTransferLib.sol**
+  - [src/EthRouter.sol](./src/EthRouter.sol)
+  - [src/Factory.sol](./src/Factory.sol)
+  - [src/PrivatePool.sol](./src/PrivatePool.sol)
+- **solmate/tokens/ERC20.sol**
+  - [src/Factory.sol](./src/Factory.sol)
+  - [src/PrivatePool.sol](./src/PrivatePool.sol)
+- **solmate/auth/Owned.sol**
+  - [src/Factory.sol](./src/Factory.sol)
+- **solmate/utils/FixedPointMathLib.sol**
+  - [src/PrivatePool.sol](./src/PrivatePool.sol)
+- **caviar/Pair.sol**
+  - [src/EthRouter.sol](./src/EthRouter.sol)
+- **royalty-registry-solidity/IRoyaltyRegistry.sol**
+  - [src/EthRouter.sol](./src/EthRouter.sol)
+  - [src/PrivatePool.sol](./src/PrivatePool.sol)
+- **solady/utils/LibClone.sol**
+  - [src/Factory.sol](./src/Factory.sol)
+- **solady/utils/MerkleProofLib.sol**
+  - [src/PrivatePool.sol](./src/PrivatePool.sol)
+- **openzeppelin/interfaces/IERC2981.sol**
+  - [src/PrivatePool.sol](./src/PrivatePool.sol)
+- **openzeppelin/interfaces/IERC3156FlashLender.sol**
+  - [src/PrivatePool.sol](./src/PrivatePool.sol)
+- **openzeppelin/interfaces/IERC2981.sol**
+  - [src/EthRouter.sol](./src/EthRouter.sol)
