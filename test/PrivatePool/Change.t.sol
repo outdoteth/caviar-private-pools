@@ -140,7 +140,7 @@ contract ChangeTest is Fixture {
         outputTokenIds.push(3);
         outputTokenIds.push(4);
         outputTokenIds.push(5);
-        factory.setProtocolFeeRate(1000); // 1%
+        factory.setProtocolChangeFeeRate(1000); // 1%
         (uint256 feeAmount, uint256 protocolFeeAmount) = privatePool.changeFeeQuote(outputTokenIds.length * 1e18);
 
         // act
@@ -187,7 +187,7 @@ contract ChangeTest is Fixture {
         outputTokenIds.push(10);
         outputTokenIds.push(11);
         outputTokenIds.push(12);
-        factory.setProtocolFeeRate(1000); // 1%
+        factory.setProtocolChangeFeeRate(1000); // 1%
         (uint256 feeAmount, uint256 protocolFeeAmount) = privatePool.changeFeeQuote(outputTokenIds.length * 1e18);
         deal(address(shibaInu), address(this), feeAmount + protocolFeeAmount);
 

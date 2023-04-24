@@ -739,7 +739,7 @@ contract PrivatePool is ERC721TokenReceiver {
         uint256 feePerNft = changeFee * 10 ** exponent;
 
         feeAmount = inputAmount * feePerNft / 1e18;
-        protocolFeeAmount = feeAmount * Factory(factory).protocolFeeRate() / 10_000;
+        protocolFeeAmount = feeAmount * Factory(factory).protocolChangeFeeRate() / 10_000;
     }
 
     /// @notice Returns the price of the pool to 18 decimals of accuracy.
@@ -757,7 +757,7 @@ contract PrivatePool is ERC721TokenReceiver {
         // multiply the changeFee to get the fee per NFT (4 decimals of accuracy)
         uint256 exponent = baseToken == address(0) ? 18 - 4 : ERC20(baseToken).decimals() - 4;
         feeAmount = changeFee * 10 ** exponent;
-        protocolFeeAmount = feeAmount * Factory(factory).protocolFeeRate() / 10_000;
+        protocolFeeAmount = feeAmount * Factory(factory).protocolChangeFeeRate() / 10_000;
     }
 
     /// @notice Returns the fee required to flash swap a given NFT.

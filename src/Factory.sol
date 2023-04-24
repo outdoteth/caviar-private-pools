@@ -50,6 +50,9 @@ contract Factory is ERC721, Owned {
     /// @notice The protocol fee that is taken on each buy/sell/change. It's in basis points: 350 = 3.5%.
     uint16 public protocolFeeRate;
 
+    /// @notice The protocol change fee rate that is taken on each change/flash loan. It's in basis points: 200 = 2.00%.
+    uint16 public protocolChangeFeeRate;
+
     constructor() ERC721("Caviar Private Pools", "POOL") Owned(msg.sender) {}
 
     receive() external payable {}
@@ -141,6 +144,12 @@ contract Factory is ERC721, Owned {
     /// @param _protocolFeeRate The protocol fee.
     function setProtocolFeeRate(uint16 _protocolFeeRate) public onlyOwner {
         protocolFeeRate = _protocolFeeRate;
+    }
+
+    /// @notice Sets the protocol fee that is taken on change or flash loan. It's in basis points: 350 = 3.5%.
+    /// @param _protocolChangeFeeRate The protocol change fee rate.
+    function setProtocolChangeFeeRate(uint16 _protocolChangeFeeRate) public onlyOwner {
+        protocolChangeFeeRate = _protocolChangeFeeRate;
     }
 
     /// @notice Withdraws the earned protocol fees.

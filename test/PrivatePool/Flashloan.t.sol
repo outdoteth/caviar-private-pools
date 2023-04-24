@@ -64,7 +64,7 @@ contract FlashloanTest is Fixture {
 
     function test_TransfersEthProtocolFee() public {
         // arrange
-        factory.setProtocolFeeRate(350);
+        factory.setProtocolChangeFeeRate(350);
         (uint256 flashFee, uint256 protocolFee) = privatePool.flashFeeAndProtocolFee();
         deal(address(flashBorrower), flashFee + protocolFee);
 
@@ -79,7 +79,7 @@ contract FlashloanTest is Fixture {
     function test_TransfersBaseTokenProtocolFee() public {
         // arrange
         stdstore.target(address(privatePool)).sig("baseToken()").checked_write(address(shibaInu));
-        factory.setProtocolFeeRate(350);
+        factory.setProtocolChangeFeeRate(350);
         (uint256 flashFee, uint256 protocolFee) = privatePool.flashFeeAndProtocolFee();
         deal(address(shibaInu), address(flashBorrower), flashFee + protocolFee);
 
@@ -93,7 +93,7 @@ contract FlashloanTest is Fixture {
 
     function test_ReturnsCorrectFlashFee() public {
         // arrange
-        factory.setProtocolFeeRate(350);
+        factory.setProtocolChangeFeeRate(350);
         uint256 expectedFee = 1e18 + 0.035e18;
 
         // act
