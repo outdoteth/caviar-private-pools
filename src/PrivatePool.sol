@@ -67,6 +67,7 @@ contract PrivatePool is ERC721TokenReceiver {
     event SetFeeRate(uint16 feeRate);
     event SetUseStolenNftOracle(bool useStolenNftOracle);
     event SetPayRoyalties(bool payRoyalties);
+    event SetChangeFee(uint56 changeFee);
     // forgefmt: disable-end
 
     error AlreadyInitialized();
@@ -556,7 +557,7 @@ contract PrivatePool is ERC721TokenReceiver {
     }
 
     /// @notice Sets the fee rate. Can only be called by the owner of the pool. The fee rate is used to calculate the
-    /// fee amount when swapping or changing NFTs. The fee rate is in basis points (1/100th of a percent). For example,
+    /// fee amount when swapping NFTs. The fee rate is in basis points (1/100th of a percent). For example,
     /// 10_000 == 100%, 200 == 2%, 1 == 0.01%.
     /// @param newFeeRate The new fee rate (in basis points)
     function setFeeRate(uint16 newFeeRate) public onlyOwner {
@@ -592,6 +593,18 @@ contract PrivatePool is ERC721TokenReceiver {
         emit SetPayRoyalties(newPayRoyalties);
     }
 
+    /// @notice Sets the change fee. Can only be called by the owner. The change fee is used to calculate the
+    /// fixed fee amount when changing or flashloaning NFTs. The fee rate is to 4 decimals of accuracy.
+    /// For example, 0.0025 ETH = 25. 500 USDC = 5_000_000.
+    /// @param _newChangeFee The new pay change fee.
+    function setChangeFee(uint56 _newChangeFee) public onlyOwner {
+        // set the pay royalties flag
+        changeFee = _newChangeFee;
+
+        // emit the set pay royalties event
+        emit SetChangeFee(changeFee);
+    }
+
     /// @notice Updates all parameter settings in one go.
     /// @param newVirtualBaseTokenReserves The new virtual base token reserves.
     /// @param newVirtualNftReserves The new virtual NFT reserves.
@@ -599,19 +612,22 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param newFeeRate The new fee rate (in basis points)
     /// @param newUseStolenNftOracle The new use stolen NFT oracle flag.
     /// @param newPayRoyalties The new pay royalties flag.
+    /// @param newChangeFee The new change fee.
     function setAllParameters(
         uint128 newVirtualBaseTokenReserves,
         uint128 newVirtualNftReserves,
         bytes32 newMerkleRoot,
         uint16 newFeeRate,
         bool newUseStolenNftOracle,
-        bool newPayRoyalties
+        bool newPayRoyalties,
+        uint56 newChangeFee
     ) public {
         setVirtualReserves(newVirtualBaseTokenReserves, newVirtualNftReserves);
         setMerkleRoot(newMerkleRoot);
         setFeeRate(newFeeRate);
         setUseStolenNftOracle(newUseStolenNftOracle);
         setPayRoyalties(newPayRoyalties);
+        setChangeFee(newChangeFee);
     }
 
     /// @notice Executes a flash loan.
