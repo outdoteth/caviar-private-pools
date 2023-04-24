@@ -751,7 +751,10 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @notice Returns the fee required to flash swap a given NFT.
     /// @return feeAmount The fee amount.
     function flashFee(address, uint256) public view returns (uint256) {
-        return changeFee;
+        // multiply the changeFee to get the fee per NFT (4 decimals of accuracy)
+        uint256 exponent = baseToken == address(0) ? 18 - 4 : ERC20(baseToken).decimals() - 4;
+        uint256 feePerNft = changeFee * 10 ** exponent;
+        return feePerNft;
     }
 
     /// @notice Returns the token that is used to pay the flash fee.
