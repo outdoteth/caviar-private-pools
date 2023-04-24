@@ -169,7 +169,7 @@ contract EthRouter is ERC721TokenReceiver {
             _approveNfts(nft, sells[i].pool);
 
             if (sells[i].isPublicPool) {
-                // exceute the sell against a public pool
+                // execute the sell against a public pool
                 uint256 outputAmount = Pair(sells[i].pool).nftSell(
                     sells[i].tokenIds,
                     0,
