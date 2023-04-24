@@ -88,7 +88,7 @@ contract BuyTest is Fixture {
 
     function test_PaysProtocolFee() public {
         // arrange
-        factory.setProtocolFeeRate(1_000); // 1%
+        factory.setProtocolFeeRate(500); // 5%
         tokenIds.push(1);
         tokenIds.push(2);
         (uint256 netInputAmount,, uint256 protocolFeeAmount) = privatePool.buyQuote(tokenIds.length * 1e18);
@@ -115,7 +115,7 @@ contract BuyTest is Fixture {
             true,
             false
         );
-        factory.setProtocolFeeRate(1000); // 1%
+        factory.setProtocolFeeRate(200); // 2%
 
         for (uint256 i = 10; i < 13; i++) {
             tokenIds.push(i);

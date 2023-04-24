@@ -41,6 +41,9 @@ contract Factory is ERC721, Owned {
     event Create(address indexed privatePool, uint256[] tokenIds, uint256 baseTokenAmount);
     event Withdraw(address indexed token, uint256 indexed amount);
 
+    error ProtocolFeeRateTooHigh();
+    error ProtocolChangeFeeRateTooHigh();
+
     /// @notice The address of the private pool implementation that proxies point to.
     address public privatePoolImplementation;
 
@@ -143,12 +146,18 @@ contract Factory is ERC721, Owned {
     /// @notice Sets the protocol fee that is taken on each buy/sell/change. It's in basis points: 350 = 3.5%.
     /// @param _protocolFeeRate The protocol fee.
     function setProtocolFeeRate(uint16 _protocolFeeRate) public onlyOwner {
+        // check that the protocol fee rate is not higher than 5%
+        if (_protocolFeeRate > 500) revert ProtocolFeeRateTooHigh();
+
         protocolFeeRate = _protocolFeeRate;
     }
 
     /// @notice Sets the protocol fee that is taken on change or flash loan. It's in basis points: 350 = 3.5%.
     /// @param _protocolChangeFeeRate The protocol change fee rate.
     function setProtocolChangeFeeRate(uint16 _protocolChangeFeeRate) public onlyOwner {
+        // check that the protocol change fee rate is not higher than 100%
+        if (_protocolChangeFeeRate > 10_000) revert ProtocolChangeFeeRateTooHigh();
+
         protocolChangeFeeRate = _protocolChangeFeeRate;
     }
 

@@ -27,4 +27,24 @@ contract ConstructorTest is Fixture {
             factory.protocolChangeFeeRate(), protocolChangeFeeRate, "Should have initialized protocolChangeFeeRate"
         );
     }
+
+    function test_RevertIf_ProtocolFeeRateIsTooHigh() public {
+        // arrange
+        uint16 protocolFeeRate = 501;
+
+        // act
+        factory = new Factory();
+        vm.expectRevert(Factory.ProtocolFeeRateTooHigh.selector);
+        factory.setProtocolFeeRate(protocolFeeRate);
+    }
+
+    function test_RevertIf_ProtocolChangeFeeRateIsTooHigh() public {
+        // arrange
+        uint16 protocolChangeFeeRate = 10_001;
+
+        // act
+        factory = new Factory();
+        vm.expectRevert(Factory.ProtocolChangeFeeRateTooHigh.selector);
+        factory.setProtocolChangeFeeRate(protocolChangeFeeRate);
+    }
 }
