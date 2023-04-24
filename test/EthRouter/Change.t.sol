@@ -36,7 +36,6 @@ contract ChangeTest is Fixture {
         EthRouter.Change[] memory changes = new EthRouter.Change[](1);
         changes[0] = EthRouter.Change({
             pool: payable(address(privatePool)),
-            nft: address(milady),
             inputTokenIds: inputTokenIds,
             inputTokenWeights: inputTokenWeights,
             inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
@@ -70,7 +69,6 @@ contract ChangeTest is Fixture {
         EthRouter.Change[] memory changes = new EthRouter.Change[](1);
         changes[0] = EthRouter.Change({
             pool: payable(address(privatePool)),
-            nft: address(milady),
             inputTokenIds: inputTokenIds,
             inputTokenWeights: inputTokenWeights,
             inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
@@ -109,7 +107,6 @@ contract ChangeTest is Fixture {
         EthRouter.Change[] memory changes = new EthRouter.Change[](1);
         changes[0] = EthRouter.Change({
             pool: payable(address(privatePool)),
-            nft: address(milady),
             inputTokenIds: inputTokenIds,
             inputTokenWeights: inputTokenWeights,
             inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),

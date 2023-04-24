@@ -48,7 +48,6 @@ contract BuyTest is Fixture {
         buys.push(
             EthRouter.Buy({
                 pool: payable(address(privatePool)),
-                nft: address(milady),
                 tokenIds: tokenIds,
                 tokenWeights: new uint256[](0),
                 proof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
@@ -127,7 +126,6 @@ contract BuyTest is Fixture {
         buys.push(
             EthRouter.Buy({
                 pool: payable(address(pair)),
-                nft: address(milady),
                 tokenIds: tokenIds,
                 tokenWeights: new uint256[](0),
                 proof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
@@ -175,7 +173,6 @@ contract BuyTest is Fixture {
         buys.push(
             EthRouter.Buy({
                 pool: payable(address(pair)),
-                nft: address(milady),
                 tokenIds: tokenIds,
                 tokenWeights: new uint256[](0),
                 proof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),

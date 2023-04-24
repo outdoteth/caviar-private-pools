@@ -47,7 +47,6 @@ contract EthRouter is ERC721TokenReceiver {
 
     struct Buy {
         address payable pool;
-        address nft;
         uint256[] tokenIds;
         uint256[] tokenWeights;
         PrivatePool.MerkleMultiProof proof;
@@ -57,7 +56,6 @@ contract EthRouter is ERC721TokenReceiver {
 
     struct Sell {
         address payable pool;
-        address nft;
         uint256[] tokenIds;
         uint256[] tokenWeights;
         PrivatePool.MerkleMultiProof proof;
@@ -68,7 +66,6 @@ contract EthRouter is ERC721TokenReceiver {
 
     struct Change {
         address payable pool;
-        address nft;
         uint256[] inputTokenIds;
         uint256[] inputTokenWeights;
         PrivatePool.MerkleMultiProof inputProof;
@@ -104,6 +101,9 @@ contract EthRouter is ERC721TokenReceiver {
 
         // loop through and execute the the buys
         for (uint256 i = 0; i < buys.length; i++) {
+            // fetch the nft address (PrivatePool and Pair both have an nft() method)
+            address nft = PrivatePool(buys[i].pool).nft();
+
             if (buys[i].isPublicPool) {
                 // execute the buy against a public pool
                 uint256 inputAmount = Pair(buys[i].pool).nftBuy{value: buys[i].baseTokenAmount}(
@@ -115,8 +115,7 @@ contract EthRouter is ERC721TokenReceiver {
                     uint256 salePrice = inputAmount / buys[i].tokenIds.length;
                     for (uint256 j = 0; j < buys[i].tokenIds.length; j++) {
                         // get the royalty fee and recipient
-                        (uint256 royaltyFee, address royaltyRecipient) =
-                            getRoyalty(buys[i].nft, buys[i].tokenIds[j], salePrice);
+                        (uint256 royaltyFee, address royaltyRecipient) = getRoyalty(nft, buys[i].tokenIds[j], salePrice);
 
                         if (royaltyFee > 0) {
                             // transfer the royalty fee to the royalty recipient
@@ -133,7 +132,7 @@ contract EthRouter is ERC721TokenReceiver {
 
             for (uint256 j = 0; j < buys[i].tokenIds.length; j++) {
                 // transfer the NFT to the caller
-                ERC721(buys[i].nft).safeTransferFrom(address(this), msg.sender, buys[i].tokenIds[j]);
+                ERC721(nft).safeTransferFrom(address(this), msg.sender, buys[i].tokenIds[j]);
             }
         }
 
@@ -157,13 +156,16 @@ contract EthRouter is ERC721TokenReceiver {
 
         // loop through and execute the sells
         for (uint256 i = 0; i < sells.length; i++) {
+            // fetch the nft address (PrivatePool and Pair both have an nft() method)
+            address nft = PrivatePool(sells[i].pool).nft();
+
             // transfer the NFTs into the router from the caller
             for (uint256 j = 0; j < sells[i].tokenIds.length; j++) {
-                ERC721(sells[i].nft).safeTransferFrom(msg.sender, address(this), sells[i].tokenIds[j]);
+                ERC721(nft).safeTransferFrom(msg.sender, address(this), sells[i].tokenIds[j]);
             }
 
             // approve the pair to transfer NFTs from the router
-            ERC721(sells[i].nft).setApprovalForAll(sells[i].pool, true);
+            ERC721(nft).setApprovalForAll(sells[i].pool, true);
 
             if (sells[i].isPublicPool) {
                 // exceute the sell against a public pool
@@ -183,7 +185,7 @@ contract EthRouter is ERC721TokenReceiver {
                     for (uint256 j = 0; j < sells[i].tokenIds.length; j++) {
                         // get the royalty fee and recipient
                         (uint256 royaltyFee, address royaltyRecipient) =
-                            getRoyalty(sells[i].nft, sells[i].tokenIds[j], salePrice);
+                            getRoyalty(nft, sells[i].tokenIds[j], salePrice);
 
                         if (royaltyFee > 0) {
                             // transfer the royalty fee to the royalty recipient
@@ -261,13 +263,16 @@ contract EthRouter is ERC721TokenReceiver {
         for (uint256 i = 0; i < changes.length; i++) {
             Change memory _change = changes[i];
 
+            // fetch the nft address (PrivatePool and Pair both have an nft() method)
+            address nft = PrivatePool(_change.pool).nft();
+
             // transfer NFTs from caller
             for (uint256 j = 0; j < changes[i].inputTokenIds.length; j++) {
-                ERC721(_change.nft).safeTransferFrom(msg.sender, address(this), _change.inputTokenIds[j]);
+                ERC721(nft).safeTransferFrom(msg.sender, address(this), _change.inputTokenIds[j]);
             }
 
             // approve pair to transfer NFTs from router
-            ERC721(_change.nft).setApprovalForAll(_change.pool, true);
+            ERC721(nft).setApprovalForAll(_change.pool, true);
 
             // execute change
             PrivatePool(_change.pool).change{value: msg.value}(
@@ -282,7 +287,7 @@ contract EthRouter is ERC721TokenReceiver {
 
             // transfer NFTs to caller
             for (uint256 j = 0; j < changes[i].outputTokenIds.length; j++) {
-                ERC721(_change.nft).safeTransferFrom(address(this), msg.sender, _change.outputTokenIds[j]);
+                ERC721(nft).safeTransferFrom(address(this), msg.sender, _change.outputTokenIds[j]);
             }
         }
 
