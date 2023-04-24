@@ -234,6 +234,14 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // ~~~ Interactions ~~~ //
 
+        if (baseToken != address(0)) {
+            // transfer the base token from the caller to the contract
+            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), netInputAmount);
+
+            // if the protocol fee is set then pay the protocol fee
+            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(address(factory), protocolFeeAmount);
+        }
+
         // calculate the sale price (assume it's the same for each NFT even if weights differ)
         uint256 salePrice = (netInputAmount - feeAmount - protocolFeeAmount) / tokenIds.length;
         uint256 royaltyFeeAmount = 0;
@@ -246,22 +254,20 @@ contract PrivatePool is ERC721TokenReceiver {
                 (uint256 royaltyFee, address recipient) = _getRoyalty(tokenIds[i], salePrice);
 
                 if (royaltyFee > 0 && recipient != address(0)) {
-                    // add the royalty fee to the total royalty fee amount
-                    royaltyFeeAmount += royaltyFee;
+                    // add the royalty fee amount to the net input amount
+                    netInputAmount += royaltyFee;
+
+                    // transfer the royalties to the recipient
+                    if (baseToken != address(0)) {
+                        ERC20(baseToken).safeTransferFrom(msg.sender, recipient, royaltyFee);
+                    } else {
+                        recipient.safeTransferETH(royaltyFee);
+                    }
                 }
             }
         }
 
-        // add the royalty fee amount to the net input aount
-        netInputAmount += royaltyFeeAmount;
-
-        if (baseToken != address(0)) {
-            // transfer the base token from the caller to the contract
-            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), netInputAmount);
-
-            // if the protocol fee is set then pay the protocol fee
-            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(address(factory), protocolFeeAmount);
-        } else {
+        if (baseToken == address(0)) {
             // check that the caller sent enough ETH to cover the net required input
             if (msg.value < netInputAmount) revert InvalidEthAmount();
 
@@ -270,22 +276,6 @@ contract PrivatePool is ERC721TokenReceiver {
 
             // refund any excess ETH to the caller
             if (msg.value > netInputAmount) msg.sender.safeTransferETH(msg.value - netInputAmount);
-        }
-
-        if (payRoyalties) {
-            for (uint256 i = 0; i < tokenIds.length; i++) {
-                // get the royalty fee for the NFT
-                (uint256 royaltyFee, address recipient) = _getRoyalty(tokenIds[i], salePrice);
-
-                // transfer the royalty fee to the recipient if it's greater than 0
-                if (royaltyFee > 0 && recipient != address(0)) {
-                    if (baseToken != address(0)) {
-                        ERC20(baseToken).safeTransfer(recipient, royaltyFee);
-                    } else {
-                        recipient.safeTransferETH(royaltyFee);
-                    }
-                }
-            }
         }
 
         // emit the buy event
