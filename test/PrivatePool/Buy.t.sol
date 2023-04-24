@@ -330,4 +330,13 @@ contract BuyTest is Fixture {
         vm.expectRevert(PrivatePool.InvalidMerkleProof.selector);
         privatePool.buy{value: netInputAmount}(tokenIds, tokenWeights, proofs);
     }
+
+    function test_RevertIf_TokenWeightsAreSetAndMerkleRootIsZero() public {
+        // arrange
+        tokenWeights.push(2.7e18);
+
+        // act
+        vm.expectRevert(PrivatePool.InvalidTokenWeights.selector);
+        privatePool.buy{value: 100}(tokenIds, tokenWeights, proofs);
+    }
 }

@@ -169,7 +169,7 @@ contract EthRouter is ERC721TokenReceiver {
             _approveNfts(nft, sells[i].pool);
 
             if (sells[i].isPublicPool) {
-                // exceute the sell against a public pool
+                // execute the sell against a public pool
                 uint256 outputAmount = Pair(sells[i].pool).nftSell(
                     sells[i].tokenIds,
                     0,
@@ -300,6 +300,7 @@ contract EthRouter is ERC721TokenReceiver {
 
     /// @notice Gets the royalty and recipient for a given NFT and sale price. Looks up the royalty info from the
     /// manifold registry.
+    /// @param nft The NFT contract address.
     /// @param tokenId The token ID of the NFT.
     /// @param salePrice The sale price of the NFT.
     /// @return royaltyFee The royalty fee to pay.

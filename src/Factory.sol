@@ -40,9 +40,14 @@ contract Factory is ERC721, Owned {
 
     event Create(address indexed privatePool, uint256[] tokenIds, uint256 baseTokenAmount);
     event Withdraw(address indexed token, uint256 indexed amount);
+    event SetPrivatePoolMetadata(address indexed privatePoolMetadata);
+    event SetPrivatePoolImplementation(address indexed privatePoolImplementation);
+    event SetProtocolFeeRate(uint16 indexed protocolFeeRate);
+    event SetProtocolChangeFeeRate(uint16 indexed protocolChangeFeeRate);
 
     error ProtocolFeeRateTooHigh();
     error ProtocolChangeFeeRateTooHigh();
+    error URIQueryForNonExistentToken();
 
     /// @notice The address of the private pool implementation that proxies point to.
     address public privatePoolImplementation;
@@ -135,12 +140,14 @@ contract Factory is ERC721, Owned {
     /// @param _privatePoolMetadata The private pool metadata contract.
     function setPrivatePoolMetadata(address _privatePoolMetadata) public onlyOwner {
         privatePoolMetadata = _privatePoolMetadata;
+        emit SetPrivatePoolMetadata(_privatePoolMetadata);
     }
 
     /// @notice Sets the private pool implementation contract that newly deployed proxies point to.
     /// @param _privatePoolImplementation The private pool implementation contract.
     function setPrivatePoolImplementation(address _privatePoolImplementation) public onlyOwner {
         privatePoolImplementation = _privatePoolImplementation;
+        emit SetPrivatePoolImplementation(_privatePoolImplementation);
     }
 
     /// @notice Sets the protocol fee that is taken on each buy/sell/change. It's in basis points: 350 = 3.5%.
@@ -150,6 +157,7 @@ contract Factory is ERC721, Owned {
         if (_protocolFeeRate > 500) revert ProtocolFeeRateTooHigh();
 
         protocolFeeRate = _protocolFeeRate;
+        emit SetProtocolFeeRate(_protocolFeeRate);
     }
 
     /// @notice Sets the protocol fee that is taken on change or flash loan. It's in basis points: 350 = 3.5%.
@@ -159,6 +167,7 @@ contract Factory is ERC721, Owned {
         if (_protocolChangeFeeRate > 10_000) revert ProtocolChangeFeeRateTooHigh();
 
         protocolChangeFeeRate = _protocolChangeFeeRate;
+        emit SetProtocolChangeFeeRate(_protocolChangeFeeRate);
     }
 
     /// @notice Withdraws the earned protocol fees.
@@ -178,6 +187,9 @@ contract Factory is ERC721, Owned {
     /// @param id The token id.
     /// @return uri The token URI.
     function tokenURI(uint256 id) public view override returns (string memory) {
+        // check that the token exists
+        if (_ownerOf[id] == address(0)) revert URIQueryForNonExistentToken();
+
         return PrivatePoolMetadata(privatePoolMetadata).tokenURI(id);
     }
 

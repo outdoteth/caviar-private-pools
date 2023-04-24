@@ -81,6 +81,7 @@ contract PrivatePool is ERC721TokenReceiver {
     error InvalidRoyaltyFee();
     error InvalidTarget();
     error PrivatePoolNftNotSupported();
+    error InvalidTokenWeights();
 
     /// @notice The address of the base ERC20 token.
     address public baseToken;
@@ -215,6 +216,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param proof The merkle proof for the weights of each NFT to buy.
     /// @return netInputAmount The amount of base tokens spent inclusive of fees.
     /// @return feeAmount The amount of base tokens spent on fees.
+    /// @return protocolFeeAmount The amount of base tokens spent on protocol fees.
     function buy(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, MerkleMultiProof calldata proof)
         public
         payable
@@ -244,7 +246,7 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC20(baseToken).safeTransferFrom(msg.sender, address(this), netInputAmount);
 
             // if the protocol fee is set then pay the protocol fee
-            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(address(factory), protocolFeeAmount);
+            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(factory, protocolFeeAmount);
         }
 
         // calculate the sale price (assume it's the same for each NFT even if weights differ)
@@ -297,6 +299,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param stolenNftProofs The proofs that show each NFT is not stolen.
     /// @return netOutputAmount The amount of base tokens received inclusive of fees.
     /// @return feeAmount The amount of base tokens to pay in fees.
+    /// @return protocolFeeAmount The amount of base tokens to pay in protocol fees.
     function sell(
         uint256[] calldata tokenIds,
         uint256[] calldata tokenWeights,
@@ -364,7 +367,7 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC20(baseToken).transfer(msg.sender, netOutputAmount);
 
             // if the protocol fee is set then pay the protocol fee
-            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(address(factory), protocolFeeAmount);
+            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(factory, protocolFeeAmount);
         }
 
         // emit the sell event
@@ -372,8 +375,9 @@ contract PrivatePool is ERC721TokenReceiver {
     }
 
     /// @notice Changes a set of NFTs that the caller owns for another set of NFTs in the pool. The caller must approve
-    /// the pool to transfer the NFTs. The sum of the caller's NFT weights must be less than or equal to the sum of the
-    /// output pool NFTs weights. The caller must also pay a fee depending the net input weight and change fee amount.
+    /// the pool to transfer the NFTs. The sum of the caller's NFT weights must be greater than or equal to the sum of
+    /// the output pool NFTs weights. The caller must also pay a fee depending the net input weight and change fee
+    /// amount.
     /// @param inputTokenIds The token IDs of the NFTs to change.
     /// @param inputTokenWeights The weights of the NFTs to change.
     /// @param inputProof The merkle proof for the weights of each NFT to change.
@@ -381,6 +385,8 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param outputTokenIds The token IDs of the NFTs to receive.
     /// @param outputTokenWeights The weights of the NFTs to receive.
     /// @param outputProof The merkle proof for the weights of each NFT to receive.
+    /// @return feeAmount The amount of base tokens to pay in fees.
+    /// @return protocolFeeAmount The amount of base tokens to pay in protocol fees.
     function change(
         uint256[] memory inputTokenIds,
         uint256[] memory inputTokenWeights,
@@ -471,9 +477,9 @@ contract PrivatePool is ERC721TokenReceiver {
                 let returnData_size := mload(returnData)
                 revert(add(32, returnData), returnData_size)
             }
-        } else {
-            revert();
         }
+
+        revert();
     }
 
     /// @notice Deposits base tokens and NFTs into the pool. The caller must approve the pool to transfer their NFTs and
@@ -561,7 +567,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// 10_000 == 100%, 200 == 2%, 1 == 0.01%.
     /// @param newFeeRate The new fee rate (in basis points)
     function setFeeRate(uint16 newFeeRate) public onlyOwner {
-        // check that the fee rate is less than 50%
+        // check that the fee rate is less than or equal to 50%
         if (newFeeRate > 5_000) revert FeeRateTooHigh();
 
         // set the fee rate
@@ -694,8 +700,11 @@ contract PrivatePool is ERC721TokenReceiver {
         uint256[] memory tokenWeights,
         MerkleMultiProof memory proof
     ) public view returns (uint256) {
-        // if the merkle root is not set then set the weight of each nft to be 1e18
         if (merkleRoot == bytes32(0)) {
+            // if the merkle root is not set then check that the token weights array is empty
+            if (tokenWeights.length > 0) revert InvalidTokenWeights();
+
+            // if the merkle root is not set then set the weight of each nft to be 1e18
             return tokenIds.length * 1e18;
         }
 
@@ -722,6 +731,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param outputAmount The amount of NFTs to buy multiplied by 1e18.
     /// @return netInputAmount The required input amount of base tokens inclusive of the fee.
     /// @return feeAmount The fee amount.
+    /// @return protocolFeeAmount The protocol fee amount.
     function buyQuote(uint256 outputAmount)
         public
         view
@@ -741,6 +751,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param inputAmount The amount of NFTs to sell multiplied by 1e18.
     /// @return netOutputAmount The output amount of base tokens inclusive of the fee.
     /// @return feeAmount The fee amount.
+    /// @return protocolFeeAmount The protocol fee amount.
     function sellQuote(uint256 inputAmount)
         public
         view

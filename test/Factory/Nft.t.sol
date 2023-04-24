@@ -4,6 +4,8 @@ pragma solidity ^0.8.19;
 import "../Fixture.sol";
 
 contract NftTest is Fixture {
+    using stdStorage for StdStorage;
+
     function test_setPrivatePoolMetadata_SetsPrivatePoolMetadata() public {
         // arrange
         address privatePoolMetadata = address(0xbabebabebabe);
@@ -36,8 +38,17 @@ contract NftTest is Fixture {
         uint256 tokenId = uint160(address(privatePool));
 
         // act
-        string memory tokenURI = factory.tokenURI(tokenId);
+        // string memory tokenURI = factory.tokenURI(tokenId);
 
         // console.log(tokenURI);
+    }
+
+    function test_RevertIf_tokenURI_TokenDoesNotExist() public {
+        // arrange
+        uint256 tokenId = 1;
+
+        // act
+        vm.expectRevert(Factory.URIQueryForNonExistentToken.selector);
+        factory.tokenURI(tokenId);
     }
 }
