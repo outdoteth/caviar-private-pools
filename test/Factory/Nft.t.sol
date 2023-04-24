@@ -38,6 +38,6 @@ contract NftTest is Fixture {
         // act
         string memory tokenURI = factory.tokenURI(tokenId);
 
-        // console.log(tokenURI);
+        console.log(tokenURI);
     }
 }

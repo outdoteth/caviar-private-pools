@@ -18,7 +18,7 @@ contract PrivatePoolMetadata {
         // forgefmt: disable-next-item
         bytes memory metadata = abi.encodePacked(
             "{",
-                '"name": "Private Pool ',Strings.toString(tokenId),'",',
+                '"name": "Private Pool ',Strings.toHexString(tokenId),'",',
                 '"description": "Caviar private pool AMM position.",',
                 '"image": ','"data:image/svg+xml;base64,', Base64.encode(svg(tokenId)),'",',
                 '"attributes": [',
