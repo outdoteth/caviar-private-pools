@@ -648,8 +648,11 @@ contract PrivatePool is ERC721TokenReceiver {
         (uint256 flashFee, uint256 protocolFee) = flashFeeAndProtocolFee();
         uint256 fee = flashFee + protocolFee;
 
-        // if base token is ETH then check that caller sent enough for the fee
-        if (baseToken == address(0) && msg.value < fee) revert InvalidEthAmount();
+        // if base token is ETH then check that caller sent enough for the fee or if base token is not ETH
+        // then check that the user sent 0 ETH
+        if ((baseToken == address(0) && msg.value < fee) || (baseToken != address(0) && msg.value > 0)) {
+            revert InvalidEthAmount();
+        }
 
         // transfer the NFT to the borrower
         ERC721(token).safeTransferFrom(address(this), address(receiver), tokenId);
