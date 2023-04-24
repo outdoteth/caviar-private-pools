@@ -166,7 +166,7 @@ contract EthRouter is ERC721TokenReceiver {
             }
 
             // approve the pair to transfer NFTs from the router
-            ERC721(nft).setApprovalForAll(sells[i].pool, true);
+            _approveNfts(nft, sells[i].pool);
 
             if (sells[i].isPublicPool) {
                 // exceute the sell against a public pool
@@ -243,8 +243,8 @@ contract EthRouter is ERC721TokenReceiver {
             ERC721(nft).safeTransferFrom(msg.sender, address(this), tokenIds[i]);
         }
 
-        // approve pair to transfer NFTs from router
-        ERC721(nft).setApprovalForAll(privatePool, true);
+        // approve the pair to transfer NFTs from the router
+        _approveNfts(nft, privatePool);
 
         // execute deposit
         PrivatePool(privatePool).deposit{value: msg.value}(tokenIds, msg.value);
@@ -272,8 +272,8 @@ contract EthRouter is ERC721TokenReceiver {
                 ERC721(nft).safeTransferFrom(msg.sender, address(this), _change.inputTokenIds[j]);
             }
 
-            // approve pair to transfer NFTs from router
-            ERC721(nft).setApprovalForAll(_change.pool, true);
+            // approve the pair to transfer NFTs from the router
+            _approveNfts(nft, _change.pool);
 
             // execute change
             PrivatePool(_change.pool).change{value: _change.baseTokenAmount}(
@@ -319,5 +319,13 @@ contract EthRouter is ERC721TokenReceiver {
             // revert if the royalty fee is greater than the sale price
             if (royaltyFee > salePrice) revert InvalidRoyaltyFee();
         }
+    }
+
+    function _approveNfts(address nft, address target) internal {
+        // check if the router is already approved to transfer NFTs from the caller
+        if (ERC721(nft).isApprovedForAll(address(this), target)) return;
+
+        // approve the target to transfer NFTs from the router
+        ERC721(nft).setApprovalForAll(target, true);
     }
 }
