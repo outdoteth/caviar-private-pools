@@ -40,7 +40,6 @@ contract SellTest is Fixture {
         bytes32[][] memory publicPoolProofs = new bytes32[][](0);
         EthRouter.Sell memory sell = EthRouter.Sell({
             pool: payable(address(privatePool)),
-            nft: address(milady),
             tokenIds: tokenIds,
             tokenWeights: new uint256[](0),
             proof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
@@ -159,7 +158,6 @@ contract SellTest is Fixture {
         }
         sells[2] = EthRouter.Sell({
             pool: payable(address(pair)),
-            nft: address(milady),
             tokenIds: tokenIds,
             tokenWeights: new uint256[](0),
             proof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
@@ -211,7 +209,6 @@ contract SellTest is Fixture {
         }
         sells[2] = EthRouter.Sell({
             pool: payable(address(pair)),
-            nft: address(milady),
             tokenIds: tokenIds,
             tokenWeights: new uint256[](0),
             proof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
