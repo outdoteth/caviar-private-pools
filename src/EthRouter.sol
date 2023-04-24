@@ -73,6 +73,7 @@ contract EthRouter is ERC721TokenReceiver {
         uint256[] outputTokenIds;
         uint256[] outputTokenWeights;
         PrivatePool.MerkleMultiProof outputProof;
+        uint256 baseTokenAmount;
     }
 
     error DeadlinePassed();
@@ -275,7 +276,7 @@ contract EthRouter is ERC721TokenReceiver {
             ERC721(nft).setApprovalForAll(_change.pool, true);
 
             // execute change
-            PrivatePool(_change.pool).change{value: msg.value}(
+            PrivatePool(_change.pool).change{value: _change.baseTokenAmount}(
                 _change.inputTokenIds,
                 _change.inputTokenWeights,
                 _change.inputProof,
