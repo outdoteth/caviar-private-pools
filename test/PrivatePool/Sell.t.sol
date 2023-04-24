@@ -123,7 +123,7 @@ contract SellTest is Fixture {
 
     function test_TransfersProtocolFee() public {
         // arrange
-        factory.setProtocolFeeRate(1000); // 1%
+        factory.setProtocolFeeRate(500); // 5%
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
@@ -151,7 +151,7 @@ contract SellTest is Fixture {
             true,
             false
         );
-        factory.setProtocolFeeRate(1000); // 1%
+        factory.setProtocolFeeRate(211); // 2.11%
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);
