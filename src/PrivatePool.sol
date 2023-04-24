@@ -374,8 +374,9 @@ contract PrivatePool is ERC721TokenReceiver {
     }
 
     /// @notice Changes a set of NFTs that the caller owns for another set of NFTs in the pool. The caller must approve
-    /// the pool to transfer the NFTs. The sum of the caller's NFT weights must be less than or equal to the sum of the
-    /// output pool NFTs weights. The caller must also pay a fee depending the net input weight and change fee amount.
+    /// the pool to transfer the NFTs. The sum of the caller's NFT weights must be greater than or equal to the sum of
+    /// the output pool NFTs weights. The caller must also pay a fee depending the net input weight and change fee
+    /// amount.
     /// @param inputTokenIds The token IDs of the NFTs to change.
     /// @param inputTokenWeights The weights of the NFTs to change.
     /// @param inputProof The merkle proof for the weights of each NFT to change.
