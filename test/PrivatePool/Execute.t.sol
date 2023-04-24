@@ -4,6 +4,8 @@ pragma solidity ^0.8.19;
 import "../Fixture.sol";
 
 contract ExecuteTest is Fixture {
+    using stdStorage for StdStorage;
+
     PrivatePool public privatePool;
 
     address owner = address(this);
@@ -75,5 +77,32 @@ contract ExecuteTest is Fixture {
         // assert
         assertEq(address(airdrop).balance, value, "Should have forwarded value");
         assertEq(address(privatePool).balance, balanceBefore, "Private pool balance should have remained the same");
+    }
+
+    function test_RevertIf_TargetIsBaseToken() public {
+        // arrange
+        address victim = vm.addr(1040341830);
+        address hacker = vm.addr(14141231201);
+        stdstore.target(address(privatePool)).sig("baseToken()").checked_write(address(shibaInu));
+        deal(address(shibaInu), victim, 100000 ether);
+        vm.prank(victim);
+        shibaInu.approve(address(privatePool), type(uint256).max);
+        address target = address(shibaInu);
+        bytes memory data =
+            abi.encodeWithSelector(ERC20.transferFrom.selector, victim, hacker, shibaInu.balanceOf(victim));
+
+        // act
+        vm.expectRevert(PrivatePool.InvalidTarget.selector);
+        privatePool.execute(target, data);
+    }
+
+    function test_RevertIf_TargetIsNft() public {
+        // arrange
+        address target = privatePool.nft();
+        bytes memory data;
+
+        // act
+        vm.expectRevert(PrivatePool.InvalidTarget.selector);
+        privatePool.execute(target, data);
     }
 }

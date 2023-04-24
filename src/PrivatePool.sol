@@ -77,6 +77,7 @@ contract PrivatePool is ERC721TokenReceiver {
     error NotAvailableForFlashLoan();
     error FlashLoanFailed();
     error InvalidRoyaltyFee();
+    error InvalidTarget();
 
     /// @notice The address of the base ERC20 token.
     address public baseToken;
@@ -457,6 +458,8 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param data The data to send to the target contract.
     /// @return returnData The return data of the transaction.
     function execute(address target, bytes memory data) public payable onlyOwner returns (bytes memory) {
+        if (target == address(baseToken) || target == address(nft)) revert InvalidTarget();
+
         // call the target with the value and data
         (bool success, bytes memory returnData) = target.call{value: msg.value}(data);
 
