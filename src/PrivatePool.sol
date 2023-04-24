@@ -215,6 +215,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param proof The merkle proof for the weights of each NFT to buy.
     /// @return netInputAmount The amount of base tokens spent inclusive of fees.
     /// @return feeAmount The amount of base tokens spent on fees.
+    /// @return protocolFeeAmount The amount of base tokens spent on protocol fees.
     function buy(uint256[] calldata tokenIds, uint256[] calldata tokenWeights, MerkleMultiProof calldata proof)
         public
         payable
@@ -297,6 +298,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param stolenNftProofs The proofs that show each NFT is not stolen.
     /// @return netOutputAmount The amount of base tokens received inclusive of fees.
     /// @return feeAmount The amount of base tokens to pay in fees.
+    /// @return protocolFeeAmount The amount of base tokens to pay in protocol fees.
     function sell(
         uint256[] calldata tokenIds,
         uint256[] calldata tokenWeights,
@@ -381,6 +383,8 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param outputTokenIds The token IDs of the NFTs to receive.
     /// @param outputTokenWeights The weights of the NFTs to receive.
     /// @param outputProof The merkle proof for the weights of each NFT to receive.
+    /// @return feeAmount The amount of base tokens to pay in fees.
+    /// @return protocolFeeAmount The amount of base tokens to pay in protocol fees.
     function change(
         uint256[] memory inputTokenIds,
         uint256[] memory inputTokenWeights,
@@ -722,6 +726,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param outputAmount The amount of NFTs to buy multiplied by 1e18.
     /// @return netInputAmount The required input amount of base tokens inclusive of the fee.
     /// @return feeAmount The fee amount.
+    /// @return protocolFeeAmount The protocol fee amount.
     function buyQuote(uint256 outputAmount)
         public
         view
@@ -741,6 +746,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// @param inputAmount The amount of NFTs to sell multiplied by 1e18.
     /// @return netOutputAmount The output amount of base tokens inclusive of the fee.
     /// @return feeAmount The fee amount.
+    /// @return protocolFeeAmount The protocol fee amount.
     function sellQuote(uint256 inputAmount)
         public
         view
