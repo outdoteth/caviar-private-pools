@@ -243,10 +243,12 @@ contract PrivatePool is ERC721TokenReceiver {
 
             if (payRoyalties) {
                 // get the royalty fee for the NFT
-                (uint256 royaltyFee,) = _getRoyalty(tokenIds[i], salePrice);
+                (uint256 royaltyFee, address recipient) = _getRoyalty(tokenIds[i], salePrice);
 
-                // add the royalty fee to the total royalty fee amount
-                royaltyFeeAmount += royaltyFee;
+                if (royaltyFee > 0 && recipient != address(0)) {
+                    // add the royalty fee to the total royalty fee amount
+                    royaltyFeeAmount += royaltyFee;
+                }
             }
         }
 
@@ -339,11 +341,11 @@ contract PrivatePool is ERC721TokenReceiver {
                 // get the royalty fee for the NFT
                 (uint256 royaltyFee, address recipient) = _getRoyalty(tokenIds[i], salePrice);
 
-                // tally the royalty fee amount
-                royaltyFeeAmount += royaltyFee;
-
                 // transfer the royalty fee to the recipient if it's greater than 0
                 if (royaltyFee > 0 && recipient != address(0)) {
+                    // tally the royalty fee amount
+                    royaltyFeeAmount += royaltyFee;
+
                     if (baseToken != address(0)) {
                         ERC20(baseToken).safeTransfer(recipient, royaltyFee);
                     } else {
