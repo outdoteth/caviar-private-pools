@@ -29,6 +29,7 @@ import {ERC721, ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
+import {SafeCast} from "openzeppelin/utils/math/SafeCast.sol";
 import {IERC2981} from "openzeppelin/interfaces/IERC2981.sol";
 import {IRoyaltyRegistry} from "royalty-registry-solidity/IRoyaltyRegistry.sol";
 import {IERC3156FlashBorrower} from "openzeppelin/interfaces/IERC3156FlashLender.sol";
@@ -228,8 +229,8 @@ contract PrivatePool is ERC721TokenReceiver {
         // ~~~ Effects ~~~ //
 
         // update the virtual reserves
-        virtualBaseTokenReserves += uint128(netInputAmount - feeAmount - protocolFeeAmount);
-        virtualNftReserves -= uint128(weightSum);
+        virtualBaseTokenReserves += SafeCast.toUint128(netInputAmount - feeAmount - protocolFeeAmount);
+        virtualNftReserves -= SafeCast.toUint128(weightSum);
 
         // ~~~ Interactions ~~~ //
 
@@ -321,8 +322,8 @@ contract PrivatePool is ERC721TokenReceiver {
         // ~~~ Effects ~~~ //
 
         // update the virtual reserves
-        virtualBaseTokenReserves -= uint128(netOutputAmount + protocolFeeAmount + feeAmount);
-        virtualNftReserves += uint128(weightSum);
+        virtualBaseTokenReserves -= SafeCast.toUint128(netOutputAmount + protocolFeeAmount + feeAmount);
+        virtualNftReserves += SafeCast.toUint128(weightSum);
 
         // ~~~ Interactions ~~~ //
 
