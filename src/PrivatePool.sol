@@ -594,8 +594,8 @@ contract PrivatePool is ERC721TokenReceiver {
     }
 
     /// @notice Sets the change fee. Can only be called by the owner. The change fee is used to calculate the
-    /// fixed fee amount when changing or flashloaning NFTs. The fee rate is to 4 decimals of accuracy.
-    /// For example, 0.0025 ETH = 25. 500 USDC = 5_000_000.
+    /// fixed fee amount when changing or flashloaning NFTs. The fee rate is to 4 decimals of accuracy. For
+    /// example, 0.0025 ETH = 25. 500 USDC = 5_000_000.
     /// @param _newChangeFee The new pay change fee.
     function setChangeFee(uint56 _newChangeFee) public onlyOwner {
         // set the pay royalties flag
