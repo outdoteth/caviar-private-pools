@@ -471,9 +471,9 @@ contract PrivatePool is ERC721TokenReceiver {
                 let returnData_size := mload(returnData)
                 revert(add(32, returnData), returnData_size)
             }
-        } else {
-            revert();
         }
+
+        revert();
     }
 
     /// @notice Deposits base tokens and NFTs into the pool. The caller must approve the pool to transfer their NFTs and
