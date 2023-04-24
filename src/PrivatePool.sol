@@ -245,7 +245,7 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC20(baseToken).safeTransferFrom(msg.sender, address(this), netInputAmount);
 
             // if the protocol fee is set then pay the protocol fee
-            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(address(factory), protocolFeeAmount);
+            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(factory, protocolFeeAmount);
         }
 
         // calculate the sale price (assume it's the same for each NFT even if weights differ)
@@ -366,7 +366,7 @@ contract PrivatePool is ERC721TokenReceiver {
             ERC20(baseToken).transfer(msg.sender, netOutputAmount);
 
             // if the protocol fee is set then pay the protocol fee
-            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(address(factory), protocolFeeAmount);
+            if (protocolFeeAmount > 0) ERC20(baseToken).safeTransfer(factory, protocolFeeAmount);
         }
 
         // emit the sell event
