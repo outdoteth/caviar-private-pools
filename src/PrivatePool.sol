@@ -79,6 +79,7 @@ contract PrivatePool is ERC721TokenReceiver {
     error FlashLoanFailed();
     error InvalidRoyaltyFee();
     error InvalidTarget();
+    error PrivatePoolNftNotSupported();
 
     /// @notice The address of the base ERC20 token.
     address public baseToken;
@@ -172,6 +173,9 @@ contract PrivatePool is ERC721TokenReceiver {
 
         // check that the fee rate is less than 50%
         if (_feeRate > 5_000) revert FeeRateTooHigh();
+
+        // check that the nft is not a private pool NFT
+        if (_nft == factory) revert PrivatePoolNftNotSupported();
 
         // set the state variables
         baseToken = _baseToken;

@@ -18,9 +18,9 @@ contract CreateTest is Fixture {
     uint256 baseTokenAmount = 20;
 
     function setUp() public {
+        factory = new Factory();
         privatePoolImplementation =
             new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
-        factory = new Factory();
         factory.setPrivatePoolImplementation(address(privatePoolImplementation));
 
         for (uint256 i = 0; i < 10; i++) {
@@ -200,6 +200,25 @@ contract CreateTest is Fixture {
         factory.create{value: 100}(
             address(shibaInu),
             nft,
+            virtualBaseTokenReserves,
+            virtualNftReserves,
+            changeFee,
+            feeRate,
+            merkleRoot,
+            true,
+            false,
+            salt,
+            tokenIds,
+            baseTokenAmount
+        );
+    }
+
+    function test_RevertIf_NftIsPrivatePoolNft() public {
+        // act
+        vm.expectRevert(PrivatePool.PrivatePoolNftNotSupported.selector);
+        factory.create{value: baseTokenAmount}(
+            address(0),
+            address(factory),
             virtualBaseTokenReserves,
             virtualNftReserves,
             changeFee,
