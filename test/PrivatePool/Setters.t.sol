@@ -164,4 +164,22 @@ contract SettersTest is Fixture {
         vm.expectRevert(PrivatePool.Unauthorized.selector);
         privatePool.setPayRoyalties(false);
     }
+
+    function test_setChangeFee_SetsChangeFee() public {
+        // arrange
+        uint56 changeFee = 4_000;
+
+        // act
+        privatePool.setChangeFee(changeFee);
+
+        // assert
+        assertEq(privatePool.changeFee(), changeFee, "Should have set change fee");
+    }
+
+    function test_setChangeFee_RevertIf_NotOwner() public {
+        // act
+        vm.prank(address(0xbabe));
+        vm.expectRevert(PrivatePool.Unauthorized.selector);
+        privatePool.setChangeFee(4_000);
+    }
 }
