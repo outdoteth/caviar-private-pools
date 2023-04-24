@@ -37,14 +37,14 @@ contract PrivatePoolMetadata {
 
         // forgefmt: disable-next-item
         bytes memory _attributes = abi.encodePacked(
-            trait("Pool address", Strings.toHexString(address(privatePool))), ',',
-            trait("Base token", Strings.toHexString(privatePool.baseToken())), ',',
-            trait("NFT", Strings.toHexString(privatePool.nft())), ',',
-            trait("Virtual base token reserves",Strings.toString(privatePool.virtualBaseTokenReserves())), ',',
-            trait("Virtual NFT reserves", Strings.toString(privatePool.virtualNftReserves())), ',',
-            trait("Fee rate (bps): ", Strings.toString(privatePool.feeRate())), ',',
-            trait("NFT balance", Strings.toString(ERC721(privatePool.nft()).balanceOf(address(privatePool)))), ',',
-            trait("Base token balance",  Strings.toString(privatePool.baseToken() == address(0) ? address(privatePool).balance : ERC20(privatePool.baseToken()).balanceOf(address(privatePool))))
+            _trait("Pool address", Strings.toHexString(address(privatePool))), ',',
+            _trait("Base token", Strings.toHexString(privatePool.baseToken())), ',',
+            _trait("NFT", Strings.toHexString(privatePool.nft())), ',',
+            _trait("Virtual base token reserves",Strings.toString(privatePool.virtualBaseTokenReserves())), ',',
+            _trait("Virtual NFT reserves", Strings.toString(privatePool.virtualNftReserves())), ',',
+            _trait("Fee rate (bps): ", Strings.toString(privatePool.feeRate())), ',',
+            _trait("NFT balance", Strings.toString(ERC721(privatePool.nft()).balanceOf(address(privatePool)))), ',',
+            _trait("Base token balance",  Strings.toString(privatePool.baseToken() == address(0) ? address(privatePool).balance : ERC20(privatePool.baseToken()).balanceOf(address(privatePool))))
         );
 
         return string(_attributes);
@@ -109,7 +109,7 @@ contract PrivatePoolMetadata {
         return _svg;
     }
 
-    function trait(string memory traitType, string memory value) internal pure returns (string memory) {
+    function _trait(string memory traitType, string memory value) internal pure returns (string memory) {
         // forgefmt: disable-next-item
         return string(
             abi.encodePacked(
