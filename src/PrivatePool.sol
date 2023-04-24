@@ -81,6 +81,7 @@ contract PrivatePool is ERC721TokenReceiver {
     error InvalidRoyaltyFee();
     error InvalidTarget();
     error PrivatePoolNftNotSupported();
+    error InvalidTokenWeights();
 
     /// @notice The address of the base ERC20 token.
     address public baseToken;
@@ -699,8 +700,11 @@ contract PrivatePool is ERC721TokenReceiver {
         uint256[] memory tokenWeights,
         MerkleMultiProof memory proof
     ) public view returns (uint256) {
-        // if the merkle root is not set then set the weight of each nft to be 1e18
         if (merkleRoot == bytes32(0)) {
+            // if the merkle root is not set then check that the token weights array is empty
+            if (tokenWeights.length > 0) revert InvalidTokenWeights();
+
+            // if the merkle root is not set then set the weight of each nft to be 1e18
             return tokenIds.length * 1e18;
         }
 
