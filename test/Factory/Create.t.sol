@@ -32,7 +32,7 @@ contract CreateTest is Fixture {
 
     function test_EmitsCreateEvent() public {
         // arrange
-        address predictedAddress = factory.predictPoolDeploymentAddress(salt);
+        address predictedAddress = factory.predictPoolDeploymentAddress(keccak256(abi.encode(address(this), salt)));
         tokenIds.push(1);
         tokenIds.push(2);
         tokenIds.push(3);

@@ -89,7 +89,8 @@ contract Factory is ERC721, Owned {
         }
 
         // deploy a minimal proxy clone of the private pool implementation
-        privatePool = PrivatePool(payable(privatePoolImplementation.cloneDeterministic(_salt)));
+        bytes32 salt = keccak256(abi.encode(msg.sender, _salt));
+        privatePool = PrivatePool(payable(privatePoolImplementation.cloneDeterministic(salt)));
 
         // mint the nft to the caller
         _safeMint(msg.sender, uint256(uint160(address(privatePool))));
