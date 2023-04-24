@@ -648,7 +648,7 @@ contract PrivatePool is ERC721TokenReceiver {
         ERC721(token).safeTransferFrom(address(receiver), address(this), tokenId);
 
         // transfer the fee from the borrower
-        if (baseToken != address(0)) ERC20(baseToken).transferFrom(msg.sender, address(this), fee);
+        if (baseToken != address(0)) ERC20(baseToken).safeTransferFrom(msg.sender, address(this), fee);
 
         return success;
     }
