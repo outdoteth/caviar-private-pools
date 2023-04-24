@@ -561,7 +561,7 @@ contract PrivatePool is ERC721TokenReceiver {
     /// 10_000 == 100%, 200 == 2%, 1 == 0.01%.
     /// @param newFeeRate The new fee rate (in basis points)
     function setFeeRate(uint16 newFeeRate) public onlyOwner {
-        // check that the fee rate is less than 50%
+        // check that the fee rate is less than or equal to 50%
         if (newFeeRate > 5_000) revert FeeRateTooHigh();
 
         // set the fee rate
