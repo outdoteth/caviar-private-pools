@@ -117,7 +117,7 @@ contract EthRouter is ERC721TokenReceiver {
                         // get the royalty fee and recipient
                         (uint256 royaltyFee, address royaltyRecipient) = getRoyalty(nft, buys[i].tokenIds[j], salePrice);
 
-                        if (royaltyFee > 0) {
+                        if (royaltyFee > 0 && royaltyRecipient != address(0)) {
                             // transfer the royalty fee to the royalty recipient
                             royaltyRecipient.safeTransferETH(royaltyFee);
                         }
@@ -187,7 +187,7 @@ contract EthRouter is ERC721TokenReceiver {
                         (uint256 royaltyFee, address royaltyRecipient) =
                             getRoyalty(nft, sells[i].tokenIds[j], salePrice);
 
-                        if (royaltyFee > 0) {
+                        if (royaltyFee > 0 && royaltyRecipient != address(0)) {
                             // transfer the royalty fee to the royalty recipient
                             royaltyRecipient.safeTransferETH(royaltyFee);
                         }
