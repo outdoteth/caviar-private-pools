@@ -676,6 +676,9 @@ contract PrivatePool is ERC721TokenReceiver {
         } else {
             // transfer the protocol fee to the factory
             factory.safeTransferETH(protocolFee);
+
+            // refund the excess ETH to the borrower
+            if (msg.value > fee) msg.sender.safeTransferETH(msg.value - fee);
         }
 
         return success;
