@@ -47,6 +47,7 @@ contract Factory is ERC721, Owned {
 
     error ProtocolFeeRateTooHigh();
     error ProtocolChangeFeeRateTooHigh();
+    error URIQueryForNonExistentToken();
 
     /// @notice The address of the private pool implementation that proxies point to.
     address public privatePoolImplementation;
@@ -186,6 +187,9 @@ contract Factory is ERC721, Owned {
     /// @param id The token id.
     /// @return uri The token URI.
     function tokenURI(uint256 id) public view override returns (string memory) {
+        // check that the token exists
+        if (_ownerOf[id] == address(0)) revert URIQueryForNonExistentToken();
+
         return PrivatePoolMetadata(privatePoolMetadata).tokenURI(id);
     }
 
