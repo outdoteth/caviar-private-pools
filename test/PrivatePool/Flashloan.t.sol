@@ -11,13 +11,15 @@ contract FlashloanTest is Fixture {
     FlashBorrower flashBorrower;
     PrivatePool privatePool;
 
+    uint56 changeFee = 5000; // 0.5 tokens
+
     function setUp() public {
         privatePool = factory.create{value: 1e18}(
             address(0),
             address(milady),
             100e18,
             10e18,
-            200,
+            changeFee,
             100,
             bytes32(0),
             true,
@@ -58,5 +60,16 @@ contract FlashloanTest is Fixture {
 
         // assert
         assertEq(shibaInu.balanceOf(address(privatePool)), balanceBefore + fee, "Should have paid fee");
+    }
+
+    function test_ReturnsCorrectFlashFee() public {
+        // arrange
+        uint256 expectedFee = 0.5e18;
+
+        // act
+        uint256 fee = privatePool.flashFee(address(milady), 1);
+
+        // assert
+        assertEq(fee, expectedFee, "Should have returned correct fee");
     }
 }
