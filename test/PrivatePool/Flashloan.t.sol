@@ -11,7 +11,7 @@ contract FlashloanTest is Fixture {
     FlashBorrower flashBorrower;
     PrivatePool privatePool;
 
-    uint56 changeFee = 5000; // 0.5 tokens
+    uint56 changeFee = 10000; // 1 tokens
 
     function setUp() public {
         privatePool = factory.create{value: 1e18}(
@@ -62,9 +62,39 @@ contract FlashloanTest is Fixture {
         assertEq(shibaInu.balanceOf(address(privatePool)), balanceBefore + fee, "Should have paid fee");
     }
 
+    function test_TransfersEthProtocolFee() public {
+        // arrange
+        factory.setProtocolFeeRate(350);
+        (uint256 flashFee, uint256 protocolFee) = privatePool.flashFeeAndProtocolFee();
+        deal(address(flashBorrower), flashFee + protocolFee);
+
+        // act
+        flashBorrower.initiateFlashLoan(address(milady), 1, "");
+
+        // assert
+        assertEq(address(factory).balance, protocolFee, "Should have paid fee");
+        assertGt(address(factory).balance, 0, "Should have paid fee");
+    }
+
+    function test_TransfersBaseTokenProtocolFee() public {
+        // arrange
+        stdstore.target(address(privatePool)).sig("baseToken()").checked_write(address(shibaInu));
+        factory.setProtocolFeeRate(350);
+        (uint256 flashFee, uint256 protocolFee) = privatePool.flashFeeAndProtocolFee();
+        deal(address(shibaInu), address(flashBorrower), flashFee + protocolFee);
+
+        // act
+        flashBorrower.initiateFlashLoan(address(milady), 1, "");
+
+        // assert
+        assertEq(shibaInu.balanceOf(address(factory)), protocolFee, "Should have paid fee");
+        assertGt(shibaInu.balanceOf(address(factory)), 0, "Should have paid fee");
+    }
+
     function test_ReturnsCorrectFlashFee() public {
         // arrange
-        uint256 expectedFee = 0.5e18;
+        factory.setProtocolFeeRate(350);
+        uint256 expectedFee = 1e18 + 0.035e18;
 
         // act
         uint256 fee = privatePool.flashFee(address(milady), 1);

@@ -632,7 +632,8 @@ contract PrivatePool is ERC721TokenReceiver {
         if (!availableForFlashLoan(token, tokenId)) revert NotAvailableForFlashLoan();
 
         // calculate the fee
-        uint256 fee = flashFee(token, tokenId);
+        (uint256 flashFee, uint256 protocolFee) = flashFeeAndProtocolFee();
+        uint256 fee = flashFee + protocolFee;
 
         // if base token is ETH then check that caller sent enough for the fee
         if (baseToken == address(0) && msg.value < fee) revert InvalidEthAmount();
@@ -650,8 +651,16 @@ contract PrivatePool is ERC721TokenReceiver {
         // transfer the NFT from the borrower
         ERC721(token).safeTransferFrom(address(receiver), address(this), tokenId);
 
-        // transfer the fee from the borrower
-        if (baseToken != address(0)) ERC20(baseToken).safeTransferFrom(msg.sender, address(this), fee);
+        if (baseToken != address(0)) {
+            // transfer the fee from the borrower
+            ERC20(baseToken).safeTransferFrom(msg.sender, address(this), flashFee);
+
+            // transfer the protocol fee to the factory
+            ERC20(baseToken).safeTransferFrom(msg.sender, factory, protocolFee);
+        } else {
+            // transfer the protocol fee to the factory
+            factory.safeTransferETH(protocolFee);
+        }
 
         return success;
     }
@@ -748,13 +757,21 @@ contract PrivatePool is ERC721TokenReceiver {
         return (virtualBaseTokenReserves * 10 ** exponent) / virtualNftReserves;
     }
 
+    /// @notice Returns the fee and protocol fee required to flash swap a given NFT.
+    /// @return feeAmount The fee amount.
+    /// @return protocolFeeAmount The protocol fee amount.
+    function flashFeeAndProtocolFee() public view returns (uint256 feeAmount, uint256 protocolFeeAmount) {
+        // multiply the changeFee to get the fee per NFT (4 decimals of accuracy)
+        uint256 exponent = baseToken == address(0) ? 18 - 4 : ERC20(baseToken).decimals() - 4;
+        feeAmount = changeFee * 10 ** exponent;
+        protocolFeeAmount = feeAmount * Factory(factory).protocolFeeRate() / 10_000;
+    }
+
     /// @notice Returns the fee required to flash swap a given NFT.
     /// @return feeAmount The fee amount.
     function flashFee(address, uint256) public view returns (uint256) {
-        // multiply the changeFee to get the fee per NFT (4 decimals of accuracy)
-        uint256 exponent = baseToken == address(0) ? 18 - 4 : ERC20(baseToken).decimals() - 4;
-        uint256 feePerNft = changeFee * 10 ** exponent;
-        return feePerNft;
+        (uint256 feeAmount, uint256 protocolFeeAmount) = flashFeeAndProtocolFee();
+        return feeAmount + protocolFeeAmount;
     }
 
     /// @notice Returns the token that is used to pay the flash fee.
