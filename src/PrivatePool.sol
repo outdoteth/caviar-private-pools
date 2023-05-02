@@ -82,6 +82,7 @@ contract PrivatePool is ERC721TokenReceiver {
     error InvalidTarget();
     error PrivatePoolNftNotSupported();
     error InvalidTokenWeights();
+    error VirtualReservesNotSet();
 
     /// @notice The address of the base ERC20 token.
     address public baseToken;
@@ -224,6 +225,9 @@ contract PrivatePool is ERC721TokenReceiver {
     {
         // ~~~ Checks ~~~ //
 
+        // check that virtual reserves are set
+        if (virtualBaseTokenReserves == 0 || virtualNftReserves == 0) revert VirtualReservesNotSet();
+
         // calculate the sum of weights of the NFTs to buy
         uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
 
@@ -307,6 +311,9 @@ contract PrivatePool is ERC721TokenReceiver {
         IStolenNftOracle.Message[] memory stolenNftProofs // put in memory to avoid stack too deep error
     ) public returns (uint256 netOutputAmount, uint256 feeAmount, uint256 protocolFeeAmount) {
         // ~~~ Checks ~~~ //
+
+        // check that virtual reserves are set
+        if (virtualBaseTokenReserves == 0 || virtualNftReserves == 0) revert VirtualReservesNotSet();
 
         // calculate the sum of weights of the NFTs to sell
         uint256 weightSum = sumWeightsAndValidateProof(tokenIds, tokenWeights, proof);
