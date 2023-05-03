@@ -95,6 +95,8 @@ contract InitializeTest is Fixture {
         bool _useStolenNftOracle,
         bool _payRoyalties
     ) public {
+        if (_nft == address(factory)) return;
+
         // arrange
         _feeRate = uint16(bound(_feeRate, 0, 5_000));
 

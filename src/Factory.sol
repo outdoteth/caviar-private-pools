@@ -124,7 +124,7 @@ contract Factory is ERC721, Owned {
             address(privatePool).safeTransferETH(baseTokenAmount);
         } else {
             // deposit the base tokens from the caller into the pool
-            ERC20(_baseToken).transferFrom(msg.sender, address(privatePool), baseTokenAmount);
+            SafeTransferLib.safeTransferFrom(ERC20(_baseToken), msg.sender, address(privatePool), baseTokenAmount);
         }
 
         // deposit the nfts from the caller into the pool
