@@ -40,11 +40,6 @@
             "type": "address"
           },
           {
-            "internalType": "address",
-            "name": "nft",
-            "type": "address"
-          },
-          {
             "internalType": "uint256[]",
             "name": "tokenIds",
             "type": "uint256[]"
@@ -109,11 +104,6 @@
           {
             "internalType": "address payable",
             "name": "pool",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "nft",
             "type": "address"
           },
           {
@@ -196,6 +186,11 @@
             "internalType": "struct PrivatePool.MerkleMultiProof",
             "name": "outputProof",
             "type": "tuple"
+          },
+          {
+            "internalType": "uint256",
+            "name": "baseTokenAmount",
+            "type": "uint256"
           }
         ],
         "internalType": "struct EthRouter.Change[]",
@@ -339,11 +334,6 @@
           {
             "internalType": "address payable",
             "name": "pool",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "nft",
             "type": "address"
           },
           {

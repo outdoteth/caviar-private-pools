@@ -57,12 +57,32 @@
   },
   {
     "inputs": [],
+    "name": "InvalidTarget",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidTokenWeights",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NotAvailableForFlashLoan",
     "type": "error"
   },
   {
     "inputs": [],
+    "name": "PrivatePoolNftNotSupported",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "Unauthorized",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "VirtualReservesNotSet",
     "type": "error"
   },
   {
@@ -272,6 +292,19 @@
       }
     ],
     "name": "Sell",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint56",
+        "name": "changeFee",
+        "type": "uint56"
+      }
+    ],
+    "name": "SetChangeFee",
     "type": "event"
   },
   {
@@ -724,6 +757,24 @@
   },
   {
     "inputs": [],
+    "name": "flashFeeAndProtocolFee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "feeAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "protocolFeeAmount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "flashFeeToken",
     "outputs": [
       {
@@ -1072,9 +1123,27 @@
         "internalType": "bool",
         "name": "newPayRoyalties",
         "type": "bool"
+      },
+      {
+        "internalType": "uint56",
+        "name": "newChangeFee",
+        "type": "uint56"
       }
     ],
     "name": "setAllParameters",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint56",
+        "name": "_newChangeFee",
+        "type": "uint56"
+      }
+    ],
+    "name": "setChangeFee",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
