@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+    // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import "../Fixture.sol";
@@ -6,20 +6,27 @@ import "../Fixture.sol";
 contract ChangeTest is Fixture {
     PrivatePool public privatePool =
         new PrivatePool(address(factory), address(royaltyRegistry), address(stolenNftOracle));
+    Pair public pair;
     EthRouter.Change[] public changes;
 
     function setUp() public {
         privatePool.initialize(address(0), address(milady), 10e18, 10e18, 50000, 1999, bytes32(0), true, false);
+        pair = caviar.create(address(milady), address(0), bytes32(0));
 
         for (uint256 i = 0; i < 5; i++) {
             milady.mint(address(privatePool), i);
+            milady.mint(address(pair), i + 100);
         }
 
         for (uint256 i = 5; i < 10; i++) {
             milady.mint(address(this), i);
+            milady.mint(address(this), i + 100);
         }
 
         milady.setApprovalForAll(address(ethRouter), true);
+
+        deal(address(pair), address(pair), 1e18);
+        deal(address(pair), 1e18);
     }
 
     function test_RefundsSurplusEth() public {
@@ -44,7 +51,8 @@ contract ChangeTest is Fixture {
             outputTokenIds: outputTokenIds,
             outputTokenWeights: outputTokenWeights,
             outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
-            baseTokenAmount: changeFee
+            baseTokenAmount: changeFee,
+            isPublicPool: false
         });
 
         uint256 balanceBefore = address(this).balance;
@@ -78,7 +86,8 @@ contract ChangeTest is Fixture {
             outputTokenIds: outputTokenIds,
             outputTokenWeights: outputTokenWeights,
             outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
-            baseTokenAmount: changeFee
+            baseTokenAmount: changeFee,
+            isPublicPool: false
         });
 
         // act
@@ -116,7 +125,8 @@ contract ChangeTest is Fixture {
             outputTokenIds: outputTokenIds,
             outputTokenWeights: outputTokenWeights,
             outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
-            baseTokenAmount: changeFee
+            baseTokenAmount: changeFee,
+            isPublicPool: false
         });
 
         // act
@@ -143,5 +153,80 @@ contract ChangeTest is Fixture {
         vm.warp(100);
         vm.expectRevert(EthRouter.DeadlinePassed.selector);
         ethRouter.change(changes, block.timestamp - 10);
+    }
+
+    function test_ChangesPublicPool() public {
+        // arrange
+        uint256 pairBalanceBefore = address(pair).balance;
+
+        uint256[] memory inputTokenIds = new uint256[](5);
+        uint256[] memory inputTokenWeights = new uint256[](0);
+        uint256[] memory outputTokenIds = new uint256[](5);
+        uint256[] memory outputTokenWeights = new uint256[](0);
+
+        for (uint256 i = 0; i < 5; i++) {
+            inputTokenIds[i] = i + 5 + 100;
+            outputTokenIds[i] = i + 100;
+        }
+
+        uint256 fractionalTokenFee = inputTokenIds.length * 1e18 * 3 / 1000;
+        uint256 changeFee = pair.buyQuote(fractionalTokenFee);
+        EthRouter.Change[] memory changes = new EthRouter.Change[](1);
+        changes[0] = EthRouter.Change({
+            pool: payable(address(pair)),
+            inputTokenIds: inputTokenIds,
+            inputTokenWeights: inputTokenWeights,
+            inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
+            stolenNftProofs: new IStolenNftOracle.Message[](0),
+            outputTokenIds: outputTokenIds,
+            outputTokenWeights: outputTokenWeights,
+            outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
+            baseTokenAmount: changeFee,
+            isPublicPool: true
+        });
+
+        // act
+        ethRouter.change{value: changeFee}(changes, 0);
+
+        // assert
+        assertEq(address(pair).balance - pairBalanceBefore, changeFee, "Should have sent eth fee");
+        assertEq(pair.balanceOf(address(this)), 0, "Should have sent all fractional tokens");
+
+        for (uint256 i = 0; i < 5; i++) {
+            assertEq(milady.ownerOf(i + 100), address(this), "Should have changed nft to owner");
+            assertEq(milady.ownerOf(i + 5 + 100), address(pair), "Should have changed nft to pool");
+        }
+    }
+
+    function test_RevertIf_PublicPoolMismatchInTokenIdsLength() public {
+        // arrange
+        uint256[] memory inputTokenIds = new uint256[](5);
+        uint256[] memory inputTokenWeights = new uint256[](0);
+        uint256[] memory outputTokenIds = new uint256[](4);
+        uint256[] memory outputTokenWeights = new uint256[](0);
+
+        for (uint256 i = 0; i < 5; i++) {
+            inputTokenIds[i] = i + 5 + 100;
+        }
+
+        uint256 fractionalTokenFee = inputTokenIds.length * 1e18 * 3 / 1000;
+        uint256 changeFee = pair.buyQuote(fractionalTokenFee);
+        EthRouter.Change[] memory changes = new EthRouter.Change[](1);
+        changes[0] = EthRouter.Change({
+            pool: payable(address(pair)),
+            inputTokenIds: inputTokenIds,
+            inputTokenWeights: inputTokenWeights,
+            inputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
+            stolenNftProofs: new IStolenNftOracle.Message[](0),
+            outputTokenIds: outputTokenIds,
+            outputTokenWeights: outputTokenWeights,
+            outputProof: PrivatePool.MerkleMultiProof(new bytes32[](0), new bool[](0)),
+            baseTokenAmount: changeFee,
+            isPublicPool: true
+        });
+
+        // act
+        vm.expectRevert(EthRouter.MismatchedTokenIds.selector);
+        ethRouter.change{value: changeFee}(changes, 0);
     }
 }

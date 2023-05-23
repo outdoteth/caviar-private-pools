@@ -44,6 +44,7 @@ import {IStolenNftOracle} from "./interfaces/IStolenNftOracle.sol";
 /// can choose whether or not they would like to pay royalties. The only base token which is supported is native ETH.
 contract EthRouter is ERC721TokenReceiver {
     using SafeTransferLib for address;
+    using SafeTransferLib for address payable;
 
     struct Buy {
         address payable pool;
@@ -74,12 +75,14 @@ contract EthRouter is ERC721TokenReceiver {
         uint256[] outputTokenWeights;
         PrivatePool.MerkleMultiProof outputProof;
         uint256 baseTokenAmount;
+        bool isPublicPool;
     }
 
     error DeadlinePassed();
     error OutputAmountTooSmall();
     error PriceOutOfRange();
     error InvalidRoyaltyFee();
+    error MismatchedTokenIds();
 
     address public immutable royaltyRegistry;
 
@@ -275,16 +278,42 @@ contract EthRouter is ERC721TokenReceiver {
             // approve the pair to transfer NFTs from the router
             _approveNfts(nft, _change.pool);
 
-            // execute change
-            PrivatePool(_change.pool).change{value: _change.baseTokenAmount}(
-                _change.inputTokenIds,
-                _change.inputTokenWeights,
-                _change.inputProof,
-                _change.stolenNftProofs,
-                _change.outputTokenIds,
-                _change.outputTokenWeights,
-                _change.outputProof
-            );
+            if (_change.isPublicPool) {
+                // check that the input token ids length matches the output token ids length
+                if (_change.inputTokenIds.length != _change.outputTokenIds.length) {
+                    revert MismatchedTokenIds();
+                }
+
+                // empty proofs assumes that we only change against floor public pools
+                bytes32[][] memory publicPoolProofs = new bytes32[][](0);
+
+                // get some fractional tokens for the input tokens
+                uint256 fractionalTokenAmount = Pair(_change.pool).wrap(
+                    _change.inputTokenIds,
+                    publicPoolProofs,
+                    // ReservoirOracle.Message[] is the exact same as IStolenNftOracle.Message[] and can be
+                    // decoded/encoded 1-to-1.
+                    abi.decode(abi.encode(_change.stolenNftProofs), (ReservoirOracle.Message[]))
+                );
+
+                // buy the surplus fractional tokens required to pay the fee
+                uint256 fractionalTokenFee = fractionalTokenAmount * 3 / 1000;
+                Pair(_change.pool).buy{value: _change.baseTokenAmount}(fractionalTokenFee, _change.baseTokenAmount, 0);
+
+                // exchange the fractional tokens for the target output tokens
+                Pair(_change.pool).unwrap(_change.outputTokenIds, true);
+            } else {
+                // execute change
+                PrivatePool(_change.pool).change{value: _change.baseTokenAmount}(
+                    _change.inputTokenIds,
+                    _change.inputTokenWeights,
+                    _change.inputProof,
+                    _change.stolenNftProofs,
+                    _change.outputTokenIds,
+                    _change.outputTokenWeights,
+                    _change.outputProof
+                );
+            }
 
             // transfer NFTs to caller
             for (uint256 j = 0; j < changes[i].outputTokenIds.length; j++) {
