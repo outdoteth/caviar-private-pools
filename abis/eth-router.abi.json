@@ -22,6 +22,11 @@
   },
   {
     "inputs": [],
+    "name": "MismatchedTokenIds",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "OutputAmountTooSmall",
     "type": "error"
   },
@@ -191,6 +196,11 @@
             "internalType": "uint256",
             "name": "baseTokenAmount",
             "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isPublicPool",
+            "type": "bool"
           }
         ],
         "internalType": "struct EthRouter.Change[]",
