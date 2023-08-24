@@ -15,18 +15,18 @@ contract DeployScript is Script {
         EthRouter ethRouter = new EthRouter(vm.envAddress("ROYALTY_REGISTRY"));
         console.log("eth router:", address(ethRouter));
 
-        // Factory factory = new Factory();
-        // console.log("factory:", address(factory));
+        Factory factory = new Factory();
+        console.log("factory:", address(factory));
 
-        // PrivatePool privatePoolImplementation =
-        //     new PrivatePool(address(factory), vm.envAddress("ROYALTY_REGISTRY"), vm.envAddress("STOLEN_NFT_ORACLE"));
-        // console.log("private pool implementation:", address(privatePoolImplementation));
+        PrivatePool privatePoolImplementation =
+            new PrivatePool(address(factory), vm.envAddress("ROYALTY_REGISTRY"), vm.envAddress("STOLEN_NFT_ORACLE"));
+        console.log("private pool implementation:", address(privatePoolImplementation));
 
-        // PrivatePoolMetadata privatePoolMetadata = new PrivatePoolMetadata();
-        // console.log("private pool metadata", address(privatePoolMetadata));
+        PrivatePoolMetadata privatePoolMetadata = new PrivatePoolMetadata();
+        console.log("private pool metadata", address(privatePoolMetadata));
 
-        // factory.setPrivatePoolImplementation(address(privatePoolImplementation));
-        // factory.setPrivatePoolMetadata(address(privatePoolMetadata));
+        factory.setPrivatePoolImplementation(address(privatePoolImplementation));
+        factory.setPrivatePoolMetadata(address(privatePoolMetadata));
 
         vm.stopBroadcast();
     }

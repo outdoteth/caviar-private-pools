@@ -339,6 +339,8 @@ contract EthRouter is ERC721TokenReceiver {
         view
         returns (uint256 royaltyFee, address recipient)
     {
+        if (royaltyRegistry == address(0)) return (0, address(0));
+
         // get the royalty lookup address
         address lookupAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(nft);
 
